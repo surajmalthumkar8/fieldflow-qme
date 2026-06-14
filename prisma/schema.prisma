@@ -1,0 +1,177 @@
+// QME engine data model.
+// SQLite for zero-setup local/demo runs. The model maps 1:1 to Supabase
+// Postgres — to migrate, change provider to "postgresql", set DATABASE_URL to
+// the Supabase connection string, and add row-level-security policies keyed on
+// `businessId` for multi-tenant isolation. JSON-ish config is stored as text
+// (SQLite has no native JSON type) and parsed in lib/config.ts.
+
+generator client {
+  provider      = "prisma-client-js"
+  // "native" for local dev; the rhel target is Vercel's serverless runtime.
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+/// A tenant: one home-services contractor we run the engine for.
+/// This single record is the "tenant config" that feeds every layer
+/// (voice prompt, RAG/FAQ, reactivation copy, A2P campaign, attribution).
+model Business {
+  id           String   @id @default(cuid())
+  slug         String   @unique
+  name         String
+  trade        String // hvac | roofing | plumbing | electrical
+  phone        String   @default("")
+  timezone     String   @default("America/Chicago")
+  serviceArea  String   @default("") // zips / metro description
+  hours        String   @default("{}") // JSON: { mon_fri, sat, sun, after_hours_policy }
+  brandVoice   String   @default("warm, professional, concise")
+  services     String   @default("[]") // JSON: [{ name, priceLow, priceHigh, highTicket }]
+  faqs         String   @default("[]") // JSON: [{ q, a }]
+  escalation   String   @default("{}") // JSON: { highValueTriggers[], transferNumber, alertChannel }
+
+  // Commercials (drive the attribution + ROI math — the core product).
+  monthlyRetainer Float @default(3500)
+  pilotFee        Float @default(2250)
+  kickerPerAppt   Float @default(0) // only > 0 for roofing / HVAC replacement ($5k+ jobs)
+  avgJobValue     Float @default(9500)
+
+  // Compliance / messaging posture.
+  a2pStatus     String @default("NOT_STARTED") // NOT_STARTED | PENDING | REGISTERED
+  a2pBrandEin   String @default("")
+  fromNumber    String @default("")
+  consentNote   String @default("")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  leads            Lead[]
+  conversations    Conversation[]
+  bookings         Booking[]
+  complianceEvents ComplianceEvent[]
+}
+
+/// A contact in a client's own list (dormant reactivation list or inbound caller).
+model Lead {
+  id         String  @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  firstName String  @default("")
+  lastName  String  @default("")
+  phone     String
+  email     String  @default("")
+  source    String  @default("") // e.g. "Past customer 2022", "Missed call", "Website form"
+  tags      String  @default("[]") // JSON string[]
+
+  // Consent (the hard TCPA gate). PEWC = prior express written consent.
+  consentStatus    String   @default("UNKNOWN") // UNKNOWN | IMPLIED | WRITTEN | RECONSENTED | OPTED_OUT
+  consentSource    String   @default("") // where/how consent was captured
+  consentTimestamp DateTime?
+  consentChannel   String   @default("") // sms | voice | web | paper
+
+  // Scrub results (run before every campaign).
+  dncStatus        String  @default("UNCHECKED") // UNCHECKED | CLEAR | ON_DNC
+  reassignedStatus String  @default("UNCHECKED") // UNCHECKED | CLEAR | REASSIGNED
+  smsEligible      Boolean @default(false) // true only when WRITTEN/RECONSENTED + scrubs CLEAR
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  conversations    Conversation[]
+  bookings         Booking[]
+  complianceEvents ComplianceEvent[]
+
+  @@index([businessId])
+}
+
+/// One AI interaction (a voice call or an SMS thread). Holds the transcript via Messages.
+model Conversation {
+  id         String  @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  leadId     String?
+  lead       Lead?    @relation(fields: [leadId], references: [id], onDelete: SetNull)
+
+  channel   String // VOICE | SMS
+  direction String // INBOUND | OUTBOUND
+  status    String   @default("ACTIVE") // ACTIVE | COMPLETED | ESCALATED
+  qualified Boolean  @default(false)
+  outcome   String   @default("") // BOOKED | NOT_INTERESTED | CALLBACK | ESCALATED | OPTED_OUT | NO_ANSWER
+  summary   String   @default("")
+  sentiment String   @default("neutral") // positive | neutral | negative (post-call analysis)
+  outcomeReason String @default("") // info_only | pricing | out_of_area | not_interested | needs_human | booked
+  recordingUrl String @default("")
+  durationSec Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  messages Message[]
+  booking  Booking?
+
+  @@index([businessId])
+  @@index([leadId])
+}
+
+/// A single turn in a conversation transcript.
+model Message {
+  id             String  @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  role    String // USER | ASSISTANT | SYSTEM
+  content String
+  createdAt DateTime @default(now())
+
+  @@index([conversationId])
+}
+
+/// A booked appointment — the unit the whole product is measured on.
+/// status walks the attribution funnel: BOOKED -> CONFIRMED -> HELD ($) | NO_SHOW | CANCELLED.
+model Booking {
+  id         String  @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  leadId     String?
+  lead       Lead?    @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  conversationId String?     @unique
+  conversation   Conversation? @relation(fields: [conversationId], references: [id], onDelete: SetNull)
+
+  service        String   @default("")
+  jobType        String   @default("") // e.g. "AC replacement", "roof inspection"
+  estimatedValue Float    @default(0)
+  isHighTicket   Boolean  @default(false) // job value >= $5,000 (kicker-eligible)
+  source         String   @default("") // REACTIVATION | INBOUND_VOICE | SPEED_TO_LEAD
+
+  scheduledAt DateTime
+  status      String   @default("BOOKED") // BOOKED | CONFIRMED | HELD | NO_SHOW | CANCELLED
+  heldAt      DateTime?
+  revenue     Float    @default(0) // client-reported closed-job value once HELD
+  kickerCharged Boolean @default(false)
+  remindersSent Int    @default(0) // 3-touch confirm/reminder cadence (lifts show-rate)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([businessId])
+  @@index([status])
+}
+
+/// Audit trail for the compliance moat (consent, scrubs, disclosures, opt-outs).
+model ComplianceEvent {
+  id         String  @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  leadId     String?
+  lead       Lead?    @relation(fields: [leadId], references: [id], onDelete: SetNull)
+
+  type   String // RECONSENT_SENT | RECONSENT_CONFIRMED | DNC_SCRUB | REASSIGNED_SCRUB | OPT_OUT | DISCLOSURE | A2P
+  detail String   @default("")
+  createdAt DateTime @default(now())
+
+  @@index([businessId])
+}
