@@ -1,5 +1,7 @@
 # FieldFlow — the QME engine (working MVP)
 
+**▶ Live demo: https://qme-app.vercel.app**  ·  Code: this repo.
+
 A working demonstration of the **TechAegisAI "Qualified Meetings" (QME)** engine: a
 **done-for-you AI service that books held, high-ticket home-services jobs** (HVAC
 replacement, roofing) for owner-operated US contractors — and **proves every dollar
