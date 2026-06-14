@@ -69,9 +69,17 @@ export async function POST(req: Request) {
   });
 
   // ---- Persist the conversation + transcript --------------------------------
-  let conversationId = body.conversationId;
-  if (!conversationId) {
-    const convo = await prisma.conversation.create({
+  // Resolve-or-create: the conversationId may not exist on this serverless
+  // instance (Vercel's /tmp SQLite is per-instance), so never assume it does —
+  // recreate it rather than failing a foreign-key write. Client history keeps
+  // the AI's continuity regardless.
+  let conversation = body.conversationId
+    ? await prisma.conversation.findFirst({
+        where: { id: body.conversationId, businessId: business.id },
+      })
+    : null;
+  if (!conversation) {
+    conversation = await prisma.conversation.create({
       data: {
         businessId: business.id,
         channel: "VOICE",
@@ -80,8 +88,8 @@ export async function POST(req: Request) {
         summary: "Live AI receptionist demo call",
       },
     });
-    conversationId = convo.id;
   }
+  const conversationId = conversation.id;
 
   // Store the USER turn (skip on the opening greeting — no user input yet).
   if (userMessage) {
