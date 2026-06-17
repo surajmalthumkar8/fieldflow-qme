@@ -1,0 +1,10 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.env
+
+# Local TTS model files (download separately — large binaries)
+voices/*.onnx
+voices/*.bin

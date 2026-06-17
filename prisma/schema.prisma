@@ -12,7 +12,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -106,6 +106,14 @@ model Conversation {
   outcomeReason String @default("") // info_only | pricing | out_of_area | not_interested | needs_human | booked
   recordingUrl String @default("")
   durationSec Int     @default(0)
+
+  // ---- Lead engine (populated by the AI qualification service) ----
+  leadGrade       String  @default("") // HOT | WARM | COLD | "" (unscored)
+  leadScore       Int     @default(0)  // 0-100 overall lead quality
+  intentScore     Int     @default(0)  // 0-100 buying/selling intent
+  budgetEstimate  Float   @default(0)  // estimated budget / price point (USD)
+  opportunitySize Float   @default(0)  // estimated deal/commission opportunity (USD)
+  qualification   String  @default("{}") // JSON: real-estate qualifying fields captured (propertyType, location, timeline, financing, goals, contact)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
