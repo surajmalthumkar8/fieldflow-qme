@@ -17,7 +17,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .core.config import get_settings
 from .core.database import init_db
-from .routers import auth, chat, health, kb, leads, voice
+from .routers import auth, chat, health, kb, leads, scheduling, voice
 from .services import llm
 
 settings = get_settings()
@@ -49,6 +49,7 @@ app.include_router(auth.router)
 app.include_router(chat.router)
 app.include_router(leads.router)
 app.include_router(kb.router)
+app.include_router(scheduling.router)
 app.include_router(voice.router)
 
 

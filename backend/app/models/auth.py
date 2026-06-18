@@ -21,6 +21,8 @@ class AppUser(Base):
     email: Mapped[str] = mapped_column(String, unique=True, index=True)
     password_hash: Mapped[str] = mapped_column(String)
     full_name: Mapped[str] = mapped_column(String, default="")
+    company_name: Mapped[str] = mapped_column(String, default="")
+    timezone: Mapped[str] = mapped_column(String, default="America/New_York")
     role: Mapped[str] = mapped_column(String, default="agent")  # admin | agent
     business_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

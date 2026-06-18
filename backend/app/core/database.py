@@ -47,3 +47,14 @@ async def init_db() -> None:
                 "ON kb_chunk USING hnsw (embedding vector_cosine_ops)"
             )
         )
+        # Lightweight forward-migrations for columns added to existing tables
+        # (create_all only creates missing tables, it doesn't alter them).
+        await conn.execute(
+            text("ALTER TABLE app_user ADD COLUMN IF NOT EXISTS company_name varchar NOT NULL DEFAULT ''")
+        )
+        await conn.execute(
+            text(
+                "ALTER TABLE app_user ADD COLUMN IF NOT EXISTS timezone varchar "
+                "NOT NULL DEFAULT 'America/New_York'"
+            )
+        )

@@ -59,8 +59,28 @@ class Settings(BaseSettings):
     tts_voice: str = "af_heart"   # Kokoro US female voice id
     say_voice: str = "Samantha"   # macOS fallback US female voice
 
+    # --- Scheduling (agent call booking) ---
+    schedule_timezone: str = "America/New_York"  # default; per-user tz overrides
+    schedule_open_hour: int = 9        # business hours start (local)
+    schedule_close_hour: int = 17      # business hours end (local)
+    schedule_slot_minutes: int = 30    # slot length
+    schedule_days_ahead: int = 10      # how far out to offer slots
+    schedule_workdays_only: bool = True  # Mon–Fri only
+
+    # --- Outbound email for calendar invites (.ics). Leave blank to skip sending;
+    #     the invite is still bookable + downloadable. Gmail: use an App Password. ---
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: str = ""
+    smtp_from: str = ""  # defaults to smtp_user
+
     # --- CORS (Next.js dev) ---
     cors_origins: str = "http://localhost:3000,http://127.0.0.1:3000"
+
+    @property
+    def email_enabled(self) -> bool:
+        return bool(self.smtp_host and self.smtp_user and self.smtp_password)
 
     @property
     def async_database_url(self) -> str:

@@ -7,6 +7,8 @@ class RegisterIn(BaseModel):
     email: EmailStr
     password: str = Field(min_length=8)
     full_name: str = ""
+    company_name: str = ""
+    timezone: str = "America/New_York"
     business_id: str | None = None
     role: str = "agent"
 
@@ -27,6 +29,8 @@ class UserOut(BaseModel):
     id: str
     email: str
     full_name: str
+    company_name: str = ""
+    timezone: str = "America/New_York"
     role: str
     business_id: str | None = None
 

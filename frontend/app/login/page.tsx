@@ -12,6 +12,8 @@ export default function LoginPage() {
   const [email, setEmail] = useState("agent@techages.ai");
   const [password, setPassword] = useState("supersecret123");
   const [fullName, setFullName] = useState("");
+  const [companyName, setCompanyName] = useState("");
+  const [timezone, setTimezone] = useState("America/New_York");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -23,7 +25,13 @@ export default function LoginPage() {
     const res = await fetch(path, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password, full_name: fullName }),
+      body: JSON.stringify({
+        email,
+        password,
+        full_name: fullName,
+        company_name: companyName,
+        timezone,
+      }),
     });
     if (res.ok) {
       router.replace(next);
@@ -69,15 +77,37 @@ export default function LoginPage() {
           </div>
 
           {mode === "register" && (
-            <label className="block text-sm">
-              <span className="text-slate-400">Full name</span>
-              <input
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-white/10 bg-[#0b1020] px-3 py-2 outline-none focus:border-indigo-400"
-                placeholder="Jane Agent"
-              />
-            </label>
+            <>
+              <label className="block text-sm">
+                <span className="text-slate-400">Full name</span>
+                <input
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  className="mt-1 w-full rounded-lg border border-white/10 bg-[#0b1020] px-3 py-2 outline-none focus:border-indigo-400"
+                  placeholder="Jane Agent"
+                />
+              </label>
+              <label className="block text-sm">
+                <span className="text-slate-400">Company name</span>
+                <input
+                  value={companyName}
+                  onChange={(e) => setCompanyName(e.target.value)}
+                  className="mt-1 w-full rounded-lg border border-white/10 bg-[#0b1020] px-3 py-2 outline-none focus:border-indigo-400"
+                  placeholder="Lone Star Realty"
+                />
+              </label>
+              <label className="block text-sm">
+                <span className="text-slate-400">Timezone</span>
+                <select
+                  value={timezone}
+                  onChange={(e) => setTimezone(e.target.value)}
+                  className="mt-1 w-full rounded-lg border border-white/10 bg-[#0b1020] px-3 py-2 outline-none focus:border-indigo-400"
+                >
+                  <option value="America/New_York">New York (US Eastern)</option>
+                  <option value="Asia/Kolkata">India (IST)</option>
+                </select>
+              </label>
+            </>
           )}
 
           <label className="block text-sm">

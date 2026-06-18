@@ -7,6 +7,7 @@ import { Badge, Button, Card, CardHeader } from "@/components/ui/primitives";
 import { PERSONA_NAME } from "@/lib/persona";
 import { CallPanel } from "./CallPanel";
 import { Transcript } from "./Transcript";
+import { SlotPicker } from "./SlotPicker";
 import { useSpeech } from "./useSpeech";
 import type { CallStatus, Scenario, TranscriptTurn } from "./types";
 
@@ -41,6 +42,8 @@ export function Receptionist({
   const [draft, setDraft] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [showScheduler, setShowScheduler] = useState(false);
+  const [captured, setCaptured] = useState<Record<string, string>>({});
 
   // Keep history in a ref so we can read the latest synchronously inside send().
   const historyRef = useRef<TranscriptTurn[]>([]);
@@ -80,6 +83,18 @@ export function Receptionist({
         }
         const data = (await res.json()) as ChatApiResponse;
         const assistantTurn: TranscriptTurn = { role: "assistant", content: data.reply };
+
+        // Accumulate captured contact details across turns; open the slot picker
+        // when Elara decides to schedule a call.
+        if (data.captured && Object.keys(data.captured).length) {
+          setCaptured((c) => ({ ...c, ...data.captured }));
+        }
+        // Open the slot picker when Elara decides to schedule OR the visitor
+        // clearly asked to (a 3B model doesn't always set the action reliably).
+        const askedToSchedule =
+          /\b(schedul\w*|book|set\s?up|arrange)\b/i.test(trimmed) &&
+          /\b(call|meeting|appointment|agent|visit|time|slot)\b/i.test(trimmed);
+        if (data.action?.type === "schedule" || askedToSchedule) setShowScheduler(true);
 
         // Reveal the transcript line + commit it to history exactly once.
         let revealed = false;
@@ -153,6 +168,8 @@ export function Receptionist({
     setError(null);
     setStatus("idle");
     setDraft("");
+    setShowScheduler(false);
+    setCaptured({});
     startedRef.current = true;
     void send("", true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -248,6 +265,29 @@ export function Receptionist({
               </div>
             </div>
           </Card>
+
+          {showScheduler ? (
+            <div className="mt-4">
+              <SlotPicker
+                businessId={businessId}
+                businessName={businessName}
+                defaultName={captured.name || ""}
+                defaultEmail={captured.email || ""}
+                defaultPhone={captured.phone || ""}
+                onBooked={(label) => {
+                  // Keep the picker mounted so its "Add to calendar (.ics)"
+                  // download stays available; it switches to its booked state.
+                  const confirm: TranscriptTurn = {
+                    role: "assistant",
+                    content: `You're all set for ${label}. I've sent the calendar invite — an agent will call you then.`,
+                  };
+                  setTurns((t) => [...t, confirm]);
+                  historyRef.current = [...historyRef.current, confirm];
+                  if (voiceOnRef.current) void speech.speak(confirm.content);
+                }}
+              />
+            </div>
+          ) : null}
         </div>
       </div>
     </div>

@@ -15,7 +15,15 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 def _user_out(u: AppUser) -> UserOut:
-    return UserOut(id=u.id, email=u.email, full_name=u.full_name, role=u.role, business_id=u.business_id)
+    return UserOut(
+        id=u.id,
+        email=u.email,
+        full_name=u.full_name,
+        company_name=u.company_name,
+        timezone=u.timezone,
+        role=u.role,
+        business_id=u.business_id,
+    )
 
 
 async def _issue_token(db: AsyncSession, user: AppUser, request: Request) -> TokenOut:
@@ -39,10 +47,13 @@ async def register(body: RegisterIn, request: Request, db: AsyncSession = Depend
     exists = (await db.execute(select(AppUser).where(AppUser.email == body.email))).scalar_one_or_none()
     if exists:
         raise HTTPException(status.HTTP_409_CONFLICT, "Email already registered")
+    tz = body.timezone if body.timezone in ("America/New_York", "Asia/Kolkata") else "America/New_York"
     user = AppUser(
         email=body.email,
         password_hash=hash_password(body.password),
         full_name=body.full_name,
+        company_name=body.company_name,
+        timezone=tz,
         role=body.role if body.role in ("admin", "agent") else "agent",
         business_id=body.business_id,
     )

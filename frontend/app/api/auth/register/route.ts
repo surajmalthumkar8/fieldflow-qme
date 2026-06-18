@@ -7,7 +7,13 @@ const TOKEN_COOKIE = "ff_token";
 
 export async function POST(req: Request) {
   if (!BACKEND) return NextResponse.json({ error: "AI_SERVICE_URL not configured" }, { status: 503 });
-  let body: { email?: string; password?: string; full_name?: string };
+  let body: {
+    email?: string;
+    password?: string;
+    full_name?: string;
+    company_name?: string;
+    timezone?: string;
+  };
   try {
     body = await req.json();
   } catch {
@@ -20,6 +26,8 @@ export async function POST(req: Request) {
       email: body.email,
       password: body.password,
       full_name: body.full_name ?? "",
+      company_name: body.company_name ?? "",
+      timezone: body.timezone ?? "America/New_York",
       role: "admin",
     }),
     cache: "no-store",
