@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import * as Icons from "lucide-react";
-import { NAV, NAV_GROUPS } from "@/lib/nav";
+import { NAV_GROUPS, navForRole, type Role } from "@/lib/nav";
 import { cn } from "@/lib/cn";
 
 function Icon({ name, className }: { name: string; className?: string }) {
@@ -11,8 +11,9 @@ function Icon({ name, className }: { name: string; className?: string }) {
   return C ? <C className={className} /> : null;
 }
 
-export function Sidebar() {
+export function Sidebar({ role = "customer" }: { role?: Role }) {
   const pathname = usePathname();
+  const items = navForRole(role);
   return (
     <aside className="relative hidden w-[248px] shrink-0 flex-col bg-ink-950 text-ink-200 lg:flex">
       {/* blueprint texture + corner mesh for depth */}
@@ -34,13 +35,13 @@ export function Sidebar() {
       </div>
 
       <nav className="relative flex-1 space-y-7 overflow-y-auto px-3 py-5 scroll-thin">
-        {NAV_GROUPS.map((group) => (
+        {NAV_GROUPS.filter((group) => items.some((n) => n.group === group)).map((group) => (
           <div key={group}>
             <div className="px-3 pb-2 font-mono text-[9px] font-semibold uppercase tracking-[0.16em] text-ink-500">
               {group}
             </div>
             <div className="space-y-0.5">
-              {NAV.filter((n) => n.group === group).map((item) => {
+              {items.filter((n) => n.group === group).map((item) => {
                 const active =
                   pathname === item.href || pathname.startsWith(item.href + "/");
                 return (

@@ -65,3 +65,6 @@ async def init_db() -> None:
         await conn.execute(
             text(f"ALTER TABLE {SCHEMA}.chat_conversation ADD COLUMN IF NOT EXISTS user_id varchar")
         )
+        await conn.execute(
+            text(f"ALTER TABLE {SCHEMA}.app_user ADD COLUMN IF NOT EXISTS profile varchar NOT NULL DEFAULT '{{}}'")
+        )

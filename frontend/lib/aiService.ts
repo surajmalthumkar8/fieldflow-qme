@@ -71,6 +71,7 @@ export function aiChat(input: {
   user_id?: string | null;
   customer_name?: string;
   customer_email?: string;
+  customer_profile?: string;
 }): Promise<AiChatResult> {
   return post<AiChatResult>("/chat", { use_kb: true, history: [], service_area: "", ...input });
 }

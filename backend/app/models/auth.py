@@ -23,7 +23,8 @@ class AppUser(Base):
     full_name: Mapped[str] = mapped_column(String, default="")
     company_name: Mapped[str] = mapped_column(String, default="")
     timezone: Mapped[str] = mapped_column(String, default="America/New_York")
-    role: Mapped[str] = mapped_column(String, default="agent")  # admin | agent
+    profile: Mapped[str] = mapped_column(String, default="{}")  # JSON: customer profile fields
+    role: Mapped[str] = mapped_column(String, default="agent")  # admin | agent | customer
     business_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 

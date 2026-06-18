@@ -30,6 +30,7 @@ def receptionist_system_prompt(
     context: str = "",
     customer_name: str = "",
     customer_email: str = "",
+    customer_profile: str = "",
 ) -> str:
     p = _load("persona.yaml")
     area = service_area or "the local area"
@@ -38,10 +39,12 @@ def receptionist_system_prompt(
         kb_block = p.get("kb_template", "").replace("{{context}}", context)
     customer_block = ""
     if customer_name or customer_email:
+        prof = f"\n  - Their saved preferences: {customer_profile}" if customer_profile else ""
         customer_block = (
             p.get("customer_template", "")
             .replace("{{customer_name}}", customer_name or "(unknown)")
             .replace("{{customer_email}}", customer_email or "(unknown)")
+            .replace("{{customer_profile}}", prof)
         )
     return (
         p.get("system", "")

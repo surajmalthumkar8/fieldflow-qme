@@ -56,7 +56,12 @@ export default function LoginPage() {
       body: JSON.stringify(body),
     });
     if (res.ok) {
-      router.replace(next);
+      const data = await res.json().catch(() => ({}));
+      const role = data?.user?.role;
+      // Customers land on their profile; agents/admins on the company dashboard.
+      const home = role === "customer" ? "/profile" : "/dashboard";
+      const dest = next && next !== "/receptionist" ? next : home;
+      router.replace(dest);
       router.refresh();
       return;
     }

@@ -62,6 +62,7 @@ async def chat(body: ChatIn, db: AsyncSession = Depends(get_db)):
         context,
         customer_name=body.customer_name,
         customer_email=body.customer_email,
+        customer_profile=body.customer_profile,
     )
     messages = [{"role": "system", "content": system}]
     # Compact context window: only keep the last N turns so the model stays fast

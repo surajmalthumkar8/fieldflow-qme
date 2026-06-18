@@ -31,6 +31,7 @@ class UserOut(BaseModel):
     full_name: str
     company_name: str = ""
     timezone: str = "America/New_York"
+    profile: dict = {}
     role: str
     business_id: str | None = None
 
@@ -53,6 +54,7 @@ class ChatIn(BaseModel):
     user_id: str | None = None
     customer_name: str = ""
     customer_email: str = ""
+    customer_profile: str = ""  # short summary of the customer's saved preferences
 
 
 class ChatAction(BaseModel):

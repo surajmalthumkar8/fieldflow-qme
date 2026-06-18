@@ -11,6 +11,7 @@ export interface CurrentUser {
   timezone: string;
   role: string;
   business_id: string | null;
+  profile?: Record<string, string>;
 }
 
 export async function getCurrentUser(): Promise<CurrentUser | null> {

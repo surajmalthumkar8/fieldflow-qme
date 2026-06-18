@@ -39,5 +39,7 @@ export async function POST(req: Request) {
   if (businessId) {
     res.cookies.set("qme_business", businessId, { sameSite: "lax", path: "/", maxAge: 60 * 60 * 12 });
   }
+  // Readable role cookie for UI/routing (data access stays JWT-gated).
+  res.cookies.set("ff_role", data?.user?.role ?? "customer", { sameSite: "lax", path: "/", maxAge: 60 * 60 * 12 });
   return res;
 }

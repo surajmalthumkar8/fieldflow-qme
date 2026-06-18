@@ -37,7 +37,7 @@ export async function POST(req: Request) {
       // The customer's chosen region timezone (falls back to the company's).
       timezone: body.timezone || business.timezone,
       business_id: business.id,
-      role: "agent",
+      role: "customer", // self-registration is always a customer (agents are invited)
     }),
     cache: "no-store",
   });
@@ -58,5 +58,7 @@ export async function POST(req: Request) {
     maxAge: 60 * 60 * 12,
   });
   res.cookies.set(ACTIVE_BUSINESS_COOKIE, business.id, { sameSite: "lax", path: "/", maxAge: 60 * 60 * 12 });
+  // Readable role cookie (UI/routing only; data access is still JWT-gated).
+  res.cookies.set("ff_role", data?.user?.role ?? "customer", { sameSite: "lax", path: "/", maxAge: 60 * 60 * 12 });
   return res;
 }

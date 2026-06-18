@@ -2,23 +2,26 @@ import { redirect } from "next/navigation";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Topbar } from "@/components/layout/Topbar";
 import { getActiveBusinessId, listBusinesses } from "@/lib/session";
+import { getCurrentUser } from "@/lib/authServer";
 import { brainIsLive } from "@/lib/ai/brain";
+import type { Role } from "@/lib/nav";
 
 export default async function AppLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const businesses = await listBusinesses();
+  const [businesses, user] = await Promise.all([listBusinesses(), getCurrentUser()]);
   if (!businesses.length) {
     // No seed yet — guide the user to set up the demo data.
     redirect("/setup-required");
   }
   const activeId = (await getActiveBusinessId()) ?? businesses[0].id;
+  const role = (user?.role as Role) ?? "customer";
 
   return (
     <div className="flex h-screen overflow-hidden bg-paper dark:bg-ink-950">
-      <Sidebar />
+      <Sidebar role={role} />
       <div className="flex min-w-0 flex-1 flex-col">
         <Topbar
           businesses={businesses.map((b) => ({ id: b.id, name: b.name, trade: b.trade }))}

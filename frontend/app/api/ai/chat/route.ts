@@ -56,6 +56,12 @@ export async function POST(req: Request) {
       user_id: user?.id ?? null,
       customer_name: user?.full_name ?? "",
       customer_email: user?.email ?? "",
+      customer_profile: user?.profile
+        ? Object.entries(user.profile)
+            .filter(([, v]) => v)
+            .map(([k, v]) => `${k}: ${v}`)
+            .join(", ")
+        : "",
     });
     return NextResponse.json(result);
   } catch (err) {

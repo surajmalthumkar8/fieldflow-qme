@@ -1,7 +1,8 @@
+import json
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Body, Depends, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -15,12 +16,17 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 def _user_out(u: AppUser) -> UserOut:
+    try:
+        profile = json.loads(u.profile) if u.profile else {}
+    except (ValueError, TypeError):
+        profile = {}
     return UserOut(
         id=u.id,
         email=u.email,
         full_name=u.full_name,
         company_name=u.company_name,
         timezone=u.timezone,
+        profile=profile if isinstance(profile, dict) else {},
         role=u.role,
         business_id=u.business_id,
     )
@@ -54,7 +60,7 @@ async def register(body: RegisterIn, request: Request, db: AsyncSession = Depend
         full_name=body.full_name,
         company_name=body.company_name,
         timezone=tz,
-        role=body.role if body.role in ("admin", "agent") else "agent",
+        role=body.role if body.role in ("admin", "agent", "customer") else "customer",
         business_id=body.business_id,
     )
     db.add(user)
@@ -72,6 +78,31 @@ async def login(body: LoginIn, request: Request, db: AsyncSession = Depends(get_
 
 @router.get("/me", response_model=UserOut)
 async def me(user: AppUser = Depends(current_user)):
+    return _user_out(user)
+
+
+@router.patch("/profile", response_model=UserOut)
+async def update_profile(
+    patch: dict = Body(...),
+    user: AppUser = Depends(current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Merge the given fields into the customer's profile (helps the AI assist them).
+    Also accepts full_name to update the display name."""
+    try:
+        current = json.loads(user.profile) if user.profile else {}
+    except (ValueError, TypeError):
+        current = {}
+    if not isinstance(current, dict):
+        current = {}
+    for k, v in (patch or {}).items():
+        if k == "full_name" and isinstance(v, str):
+            user.full_name = v[:120]
+        else:
+            current[str(k)] = "" if v is None else str(v)[:500]
+    user.profile = json.dumps(current)
+    await db.commit()
+    await db.refresh(user)
     return _user_out(user)
 
 

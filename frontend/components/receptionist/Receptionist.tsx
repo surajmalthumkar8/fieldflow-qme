@@ -45,7 +45,9 @@ export function Receptionist({
   const speech = useSpeech();
   const [turns, setTurns] = useState<TranscriptTurn[]>([]);
   const [status, setStatus] = useState<CallStatus>("idle");
-  const [voiceOn, setVoiceOn] = useState(true);
+  // Voice OFF by default — the greeting shows as text (no annoying auto-speech on
+  // every load/refresh). The visitor turns it on, or uses tap-to-talk.
+  const [voiceOn, setVoiceOn] = useState(false);
   const [draft, setDraft] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -241,7 +243,7 @@ export function Receptionist({
         </Badge>
         <div className="flex items-center gap-2">
           {/* History dropdown (ChatGPT-style) */}
-          <div className="relative">
+          <div className="relative z-50">
             <Button
               variant="secondary"
               onClick={() => {
@@ -255,8 +257,8 @@ export function Receptionist({
             </Button>
             {historyOpen ? (
               <>
-                <div className="fixed inset-0 z-10" onClick={() => setHistoryOpen(false)} />
-                <div className="absolute right-0 z-20 mt-1 max-h-80 w-72 overflow-y-auto rounded-xl border border-ink-200 bg-white p-1.5 shadow-card-lg dark:border-ink-700 dark:bg-ink-900">
+                <div className="fixed inset-0 z-40 bg-ink-950/30 backdrop-blur-[1px]" onClick={() => setHistoryOpen(false)} />
+                <div className="absolute right-0 z-50 mt-1 max-h-80 w-72 overflow-y-auto rounded-xl border border-ink-200 bg-white p-1.5 shadow-pop ring-1 ring-ink-950/5 dark:border-ink-700 dark:bg-ink-900">
                   <button
                     onClick={() => {
                       setHistoryOpen(false);
