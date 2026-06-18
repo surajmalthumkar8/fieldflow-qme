@@ -13,9 +13,10 @@ export interface AiChatResult {
   reply: string;
   qualified: boolean;
   sentiment: "positive" | "neutral" | "negative";
-  action: { type: "schedule" | "route_to_agent" | "capture_contact" | "none"; notes?: string | null };
+  action: { type: "schedule" | "route_to_agent" | "capture_contact" | "raise_ticket" | "none"; notes?: string | null };
   captured: Record<string, string>;
   engine: string;
+  conversation_id?: string | null;
 }
 
 export interface AiQualifyResult {
@@ -66,8 +67,30 @@ export function aiChat(input: {
   history?: AiTurn[];
   message: string;
   use_kb?: boolean;
+  conversation_id?: string | null;
 }): Promise<AiChatResult> {
   return post<AiChatResult>("/chat", { use_kb: true, history: [], service_area: "", ...input });
+}
+
+export interface AiConversationSummary {
+  id: string;
+  title: string;
+  lead_name: string;
+  updated_at: string | null;
+  preview: string;
+  message_count: number;
+}
+
+export function aiListConversations(businessId: string): Promise<AiConversationSummary[]> {
+  return fetch(`${BASE}/conversations?business_id=${encodeURIComponent(businessId)}`, {
+    cache: "no-store",
+  }).then((r) => (r.ok ? r.json() : []));
+}
+
+export function aiGetConversation(id: string): Promise<{ id: string; title: string; messages: AiTurn[] }> {
+  return fetch(`${BASE}/conversations/${encodeURIComponent(id)}`, { cache: "no-store" }).then((r) =>
+    r.ok ? r.json() : { id, title: "", messages: [] }
+  );
 }
 
 export function aiQualify(history: AiTurn[]): Promise<AiQualifyResult> {

@@ -13,6 +13,7 @@ interface Body {
   serviceArea?: string;
   history?: AiTurn[];
   message?: string;
+  conversationId?: string | null;
 }
 
 export async function POST(req: Request) {
@@ -49,6 +50,7 @@ export async function POST(req: Request) {
       service_area: serviceArea,
       history: Array.isArray(body.history) ? body.history : [],
       message: typeof body.message === "string" ? body.message : "",
+      conversation_id: body.conversationId ?? null,
     });
     return NextResponse.json(result);
   } catch (err) {

@@ -48,6 +48,7 @@ class ChatIn(BaseModel):
     history: list[Turn] = []
     message: str = ""
     use_kb: bool = True
+    conversation_id: str | None = None  # omit to start a new persisted conversation
 
 
 class ChatAction(BaseModel):
@@ -62,6 +63,7 @@ class ChatOut(BaseModel):
     action: ChatAction = ChatAction()
     captured: dict = {}
     engine: str = "ollama"
+    conversation_id: str | None = None
 
 
 # ---- Lead qualification / summary ----

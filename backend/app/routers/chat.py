@@ -1,12 +1,45 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from sqlalchemy import select
+
 from ..services import llm, rag
 from ..core.database import get_db
+from ..models import ChatConversation, ChatMessage
 from ..prompts import loader
 from ..schemas import ChatAction, ChatIn, ChatOut
 
 router = APIRouter(tags=["ai"])
+
+
+async def _persist(db, body: ChatIn, reply: str, captured: dict) -> str | None:
+    """Save this turn (user + assistant) to a persisted conversation; return its id."""
+    try:
+        convo = None
+        if body.conversation_id:
+            convo = (
+                await db.execute(
+                    select(ChatConversation).where(ChatConversation.id == body.conversation_id)
+                )
+            ).scalar_one_or_none()
+        if convo is None:
+            title = (body.message or "New conversation")[:50]
+            convo = ChatConversation(business_id=body.business_id, title=title)
+            db.add(convo)
+            await db.flush()
+        if body.message:
+            db.add(ChatMessage(conversation_id=convo.id, role="user", content=body.message))
+        db.add(ChatMessage(conversation_id=convo.id, role="assistant", content=reply))
+        # Keep lead name/email fresh as we capture them.
+        if captured.get("name"):
+            convo.lead_name = captured["name"]
+        if captured.get("email"):
+            convo.lead_email = captured["email"]
+        await db.commit()
+        return convo.id
+    except Exception:
+        await db.rollback()
+        return body.conversation_id
 
 
 @router.post("/chat", response_model=ChatOut)
@@ -36,12 +69,15 @@ async def chat(body: ChatIn, db: AsyncSession = Depends(get_db)):
             f"Hi! I'm {loader.persona_name()} with {body.business_name}. I'm an AI assistant and can "
             "connect you to a human anytime. Are you looking to buy, sell, rent, or invest?"
         )
+        fallback_reply = greeting if not body.message else "Thanks — let me get an agent to follow up with you shortly. What's the best way to reach you?"
+        conv_id = await _persist(db, body, fallback_reply, {})
         return ChatOut(
-            reply=greeting if not body.message else "Thanks — let me get an agent to follow up with you shortly. What's the best way to reach you?",
+            reply=fallback_reply,
             qualified=False,
             sentiment="neutral",
             action=ChatAction(type="none"),
             engine="fallback",
+            conversation_id=conv_id,
         )
     # Small models vary the JSON shape — be defensive. `action` may come back as a
     # bare string ("none") or be missing; `captured` may not be a dict.
@@ -64,11 +100,15 @@ async def chat(body: ChatIn, db: AsyncSession = Depends(get_db)):
     if not isinstance(captured, dict):
         captured = {}
 
+    reply = str(data.get("reply") or "Sorry, could you say that again?")
+    clean_captured = {k: str(v) for k, v in captured.items() if v is not None}
+    conv_id = await _persist(db, body, reply, clean_captured)
     return ChatOut(
-        reply=str(data.get("reply") or "Sorry, could you say that again?"),
+        reply=reply,
         qualified=bool(data.get("qualified")),
         sentiment=sentiment,
         action=ChatAction(type=atype, notes=notes),
-        captured={k: str(v) for k, v in captured.items() if v is not None},
+        captured=clean_captured,
         engine="ollama",
+        conversation_id=conv_id,
     )

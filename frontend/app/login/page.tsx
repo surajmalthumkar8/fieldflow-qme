@@ -9,8 +9,8 @@ export default function LoginPage() {
   const next = params.get("next") || "/receptionist";
 
   const [mode, setMode] = useState<"login" | "register">("login");
-  const [email, setEmail] = useState("agent@techages.ai");
-  const [password, setPassword] = useState("supersecret123");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [companyName, setCompanyName] = useState("");
   const [timezone, setTimezone] = useState("America/New_York");
@@ -144,7 +144,7 @@ export default function LoginPage() {
           </button>
 
           <p className="text-center text-xs text-slate-500">
-            Demo account is pre-filled. Sessions are JWT-backed (12h) on the FastAPI service.
+            Sessions are JWT-backed (12h).
           </p>
         </form>
       </div>

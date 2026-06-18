@@ -20,6 +20,7 @@ interface ChatApiResponse {
   action?: { type?: string; notes?: string | null };
   captured?: Record<string, string>;
   engine?: string;
+  conversation_id?: string | null;
 }
 
 export function Receptionist({
@@ -47,6 +48,7 @@ export function Receptionist({
 
   // Keep history in a ref so we can read the latest synchronously inside send().
   const historyRef = useRef<TranscriptTurn[]>([]);
+  const conversationIdRef = useRef<string | null>(null); // persisted conversation thread
   const startedRef = useRef(false);
   const voiceOnRef = useRef(voiceOn);
   voiceOnRef.current = voiceOn;
@@ -74,6 +76,7 @@ export function Receptionist({
             businessId,
             businessName,
             serviceArea,
+            conversationId: conversationIdRef.current,
             history: isStart ? [] : historyRef.current.slice(0, -1),
             message: isStart ? "" : trimmed,
           }),
@@ -83,6 +86,7 @@ export function Receptionist({
           throw new Error(j.error || `Request failed (${res.status})`);
         }
         const data = (await res.json()) as ChatApiResponse;
+        if (data.conversation_id) conversationIdRef.current = data.conversation_id;
         const assistantTurn: TranscriptTurn = { role: "assistant", content: data.reply };
 
         // Accumulate captured contact details across turns; open the slot picker
@@ -165,6 +169,7 @@ export function Receptionist({
     speech.cancelSpeak();
     speech.stopListening();
     historyRef.current = [];
+    conversationIdRef.current = null;
     setTurns([]);
     setError(null);
     setStatus("idle");
