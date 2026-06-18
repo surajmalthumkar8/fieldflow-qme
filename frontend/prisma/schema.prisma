@@ -23,7 +23,8 @@ model Business {
   id           String   @id @default(cuid())
   slug         String   @unique
   name         String
-  trade        String // hvac | roofing | plumbing | electrical
+  trade        String // hvac | roofing | plumbing | electrical | real_estate
+  markets      String   @default("US") // CSV of regions served: US | IN (e.g. "US,IN")
   phone        String   @default("")
   timezone     String   @default("America/Chicago")
   serviceArea  String   @default("") // zips / metro description

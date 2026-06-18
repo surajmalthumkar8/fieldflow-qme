@@ -9,6 +9,11 @@ interface Company {
   serviceArea?: string;
 }
 
+const REGIONS = [
+  { value: "US", label: "United States — New York (ET)", tz: "America/New_York" },
+  { value: "IN", label: "India — IST", tz: "Asia/Kolkata" },
+];
+
 export default function LoginPage() {
   const router = useRouter();
   const params = useSearchParams();
@@ -18,32 +23,33 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
+  const [region, setRegion] = useState("US");
   const [companies, setCompanies] = useState<Company[]>([]);
   const [businessId, setBusinessId] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
-  // Load the companies a customer can register under.
+  // Load companies serving the selected region.
   useEffect(() => {
-    fetch("/api/businesses")
+    fetch(`/api/businesses?region=${region}`)
       .then((r) => (r.ok ? r.json() : []))
       .then((list: Company[]) => {
         setCompanies(list);
-        if (list.length && !businessId) setBusinessId(list[0].id);
+        setBusinessId(list.length ? list[0].id : "");
       })
       .catch(() => {});
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [region]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
     setError("");
     const path = mode === "login" ? "/api/auth/login" : "/api/auth/register";
+    const tz = REGIONS.find((r) => r.value === region)?.tz || "America/New_York";
     const body =
       mode === "login"
         ? { email, password }
-        : { email, password, full_name: fullName, business_id: businessId };
+        : { email, password, full_name: fullName, business_id: businessId, timezone: tz };
     const res = await fetch(path, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -102,6 +108,20 @@ export default function LoginPage() {
                   className="mt-1 w-full rounded-lg border border-white/10 bg-[#0b1020] px-3 py-2 outline-none focus:border-indigo-400"
                   placeholder="Jane Agent"
                 />
+              </label>
+              <label className="block text-sm">
+                <span className="text-slate-400">Region you're interested in</span>
+                <select
+                  value={region}
+                  onChange={(e) => setRegion(e.target.value)}
+                  className="mt-1 w-full rounded-lg border border-white/10 bg-[#0b1020] px-3 py-2 outline-none focus:border-indigo-400"
+                >
+                  {REGIONS.map((r) => (
+                    <option key={r.value} value={r.value}>
+                      {r.label}
+                    </option>
+                  ))}
+                </select>
               </label>
               <label className="block text-sm">
                 <span className="text-slate-400">Company</span>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { RotateCcw, Send, Sparkles } from "lucide-react";
+import { RotateCcw, Send, Sparkles, History, Plus, MessageSquare } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { Badge, Button, Card, CardHeader } from "@/components/ui/primitives";
 import { PERSONA_NAME } from "@/lib/persona";
@@ -31,6 +31,7 @@ export function Receptionist({
   scenarios,
   customerName = "",
   customerEmail = "",
+  customerTimezone = "",
 }: {
   businessId: string;
   businessName: string;
@@ -39,6 +40,7 @@ export function Receptionist({
   scenarios: Scenario[];
   customerName?: string;
   customerEmail?: string;
+  customerTimezone?: string;
 }) {
   const speech = useSpeech();
   const [turns, setTurns] = useState<TranscriptTurn[]>([]);
@@ -49,6 +51,10 @@ export function Receptionist({
   const [busy, setBusy] = useState(false);
   const [showScheduler, setShowScheduler] = useState(false);
   const [captured, setCaptured] = useState<Record<string, string>>({});
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [history, setHistory] = useState<
+    { id: string; title: string; preview: string; message_count: number }[]
+  >([]);
 
   // Keep history in a ref so we can read the latest synchronously inside send().
   const historyRef = useRef<TranscriptTurn[]>([]);
@@ -145,6 +151,46 @@ export function Receptionist({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // ---- Conversation history (ChatGPT-style) ----
+  const loadHistory = useCallback(async () => {
+    try {
+      const r = await fetch("/api/ai/conversations", { cache: "no-store" });
+      if (r.ok) setHistory(await r.json());
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadHistory();
+  }, [loadHistory]);
+
+  // Open + resume a past conversation (don't re-greet).
+  const openConversation = useCallback(
+    async (id: string) => {
+      setHistoryOpen(false);
+      try {
+        const r = await fetch(`/api/ai/conversations/${id}`, { cache: "no-store" });
+        if (!r.ok) return;
+        const data = (await r.json()) as { messages: TranscriptTurn[] };
+        const msgs = (data.messages || []).map((m) => ({ role: m.role, content: m.content }));
+        speech.cancelSpeak();
+        speech.stopListening();
+        historyRef.current = msgs;
+        conversationIdRef.current = id;
+        startedRef.current = true;
+        setTurns(msgs);
+        setShowScheduler(false);
+        setCaptured({});
+        setStatus("idle");
+        setDraft("");
+      } catch {
+        /* ignore */
+      }
+    },
+    [speech]
+  );
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const text = draft.trim();
@@ -194,12 +240,64 @@ export function Receptionist({
           {PERSONA_NAME} · local AI
         </Badge>
         <div className="flex items-center gap-2">
+          {/* History dropdown (ChatGPT-style) */}
+          <div className="relative">
+            <Button
+              variant="secondary"
+              onClick={() => {
+                const next = !historyOpen;
+                setHistoryOpen(next);
+                if (next) void loadHistory();
+              }}
+            >
+              <History className="h-4 w-4" />
+              History
+            </Button>
+            {historyOpen ? (
+              <>
+                <div className="fixed inset-0 z-10" onClick={() => setHistoryOpen(false)} />
+                <div className="absolute right-0 z-20 mt-1 max-h-80 w-72 overflow-y-auto rounded-xl border border-ink-200 bg-white p-1.5 shadow-card-lg dark:border-ink-700 dark:bg-ink-900">
+                  <button
+                    onClick={() => {
+                      setHistoryOpen(false);
+                      newCall();
+                    }}
+                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-signal-700 hover:bg-signal-50 dark:text-signal-300 dark:hover:bg-ink-800"
+                  >
+                    <Plus className="h-4 w-4" /> New chat
+                  </button>
+                  <div className="my-1 border-t border-ink-100 dark:border-ink-800" />
+                  {history.length === 0 ? (
+                    <p className="px-3 py-3 text-xs text-ink-400">No past conversations yet.</p>
+                  ) : (
+                    history.map((c) => (
+                      <button
+                        key={c.id}
+                        onClick={() => void openConversation(c.id)}
+                        className="flex w-full items-start gap-2 rounded-lg px-3 py-2 text-left hover:bg-ink-50 dark:hover:bg-ink-800"
+                      >
+                        <MessageSquare className="mt-0.5 h-3.5 w-3.5 shrink-0 text-ink-400" />
+                        <span className="min-w-0">
+                          <span className="block truncate text-sm text-ink-800 dark:text-ink-100">
+                            {c.title || "Conversation"}
+                          </span>
+                          <span className="block truncate text-[11px] text-ink-400">
+                            {c.message_count} messages
+                          </span>
+                        </span>
+                      </button>
+                    ))
+                  )}
+                </div>
+              </>
+            ) : null}
+          </div>
           <Button variant="secondary" onClick={() => setVoiceOn((v) => !v)}>
             {voiceOn ? "🔊 Voice on" : "🔇 Voice off"}
           </Button>
           <Button variant="secondary" onClick={newCall} disabled={busy}>
             <RotateCcw className="h-4 w-4" />
-            New call
+            New chat
           </Button>
         </div>
       </div>
@@ -237,6 +335,7 @@ export function Receptionist({
                       defaultName={captured.name || customerName}
                       defaultEmail={captured.email || customerEmail}
                       defaultPhone={captured.phone || ""}
+                      defaultTz={customerTimezone}
                       onBooked={(label, emailed) => {
                         // Keep the picker in its booked state (download stays); it
                         // clears when the visitor sends their next message.

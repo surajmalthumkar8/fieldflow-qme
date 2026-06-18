@@ -46,6 +46,7 @@ export default async function ReceptionistPage() {
         scenarios={SCENARIOS}
         customerName={user?.full_name ?? ""}
         customerEmail={user?.email ?? ""}
+        customerTimezone={user?.timezone ?? ""}
       />
     </div>
   );

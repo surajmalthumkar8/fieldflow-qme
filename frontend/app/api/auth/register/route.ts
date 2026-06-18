@@ -11,7 +11,7 @@ const TOKEN_COOKIE = "ff_token";
 // businesses we host). We link the user to that company and activate it.
 export async function POST(req: Request) {
   if (!BACKEND) return NextResponse.json({ error: "AI_SERVICE_URL not configured" }, { status: 503 });
-  let body: { email?: string; password?: string; full_name?: string; business_id?: string };
+  let body: { email?: string; password?: string; full_name?: string; business_id?: string; timezone?: string };
   try {
     body = await req.json();
   } catch {
@@ -34,7 +34,8 @@ export async function POST(req: Request) {
       password: body.password,
       full_name: body.full_name ?? "",
       company_name: business.name,
-      timezone: business.timezone,
+      // The customer's chosen region timezone (falls back to the company's).
+      timezone: body.timezone || business.timezone,
       business_id: business.id,
       role: "agent",
     }),

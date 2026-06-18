@@ -29,6 +29,7 @@ export function SlotPicker({
   defaultName = "",
   defaultEmail = "",
   defaultPhone = "",
+  defaultTz: tzProp = "",
   onBooked,
 }: {
   businessId: string;
@@ -36,9 +37,13 @@ export function SlotPicker({
   defaultName?: string;
   defaultEmail?: string;
   defaultPhone?: string;
+  defaultTz?: string;
   onBooked: (label: string, emailed: boolean) => void;
 }) {
-  const [tz, setTz] = useState(defaultTz());
+  // Default to the customer's account timezone, else guess from the browser.
+  const [tz, setTz] = useState(
+    TZS.some((t) => t.value === tzProp) ? tzProp : defaultTz()
+  );
   const [slots, setSlots] = useState<Slot[]>([]);
   const [loading, setLoading] = useState(true);
   const [email, setEmail] = useState(defaultEmail);
