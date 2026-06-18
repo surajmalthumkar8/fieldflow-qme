@@ -10,17 +10,20 @@ router = APIRouter(prefix="/conversations", tags=["conversations"])
 
 
 @router.get("")
-async def list_conversations(business_id: str, limit: int = 30, db: AsyncSession = Depends(get_db)):
-    """Recent conversations for a business (newest first) with a short preview."""
-    rows = (
-        await db.execute(
-            select(ChatConversation)
-            .options(selectinload(ChatConversation.messages))
-            .where(ChatConversation.business_id == business_id)
-            .order_by(ChatConversation.updated_at.desc())
-            .limit(limit)
-        )
-    ).scalars().all()
+async def list_conversations(
+    business_id: str, user_id: str | None = None, limit: int = 30, db: AsyncSession = Depends(get_db)
+):
+    """Recent conversations (newest first). Scoped to the user when user_id is given."""
+    q = (
+        select(ChatConversation)
+        .options(selectinload(ChatConversation.messages))
+        .where(ChatConversation.business_id == business_id)
+        .order_by(ChatConversation.updated_at.desc())
+        .limit(limit)
+    )
+    if user_id:
+        q = q.where(ChatConversation.user_id == user_id)
+    rows = (await db.execute(q)).scalars().all()
     out = []
     for c in rows:
         first_user = next((m.content for m in c.messages if m.role == "user"), "")

@@ -68,6 +68,9 @@ export function aiChat(input: {
   message: string;
   use_kb?: boolean;
   conversation_id?: string | null;
+  user_id?: string | null;
+  customer_name?: string;
+  customer_email?: string;
 }): Promise<AiChatResult> {
   return post<AiChatResult>("/chat", { use_kb: true, history: [], service_area: "", ...input });
 }

@@ -49,6 +49,10 @@ class ChatIn(BaseModel):
     message: str = ""
     use_kb: bool = True
     conversation_id: str | None = None  # omit to start a new persisted conversation
+    # Signed-in customer (injected by the proxy from the auth cookie, not the browser).
+    user_id: str | None = None
+    customer_name: str = ""
+    customer_email: str = ""
 
 
 class ChatAction(BaseModel):

@@ -29,12 +29,16 @@ export function Receptionist({
   tradeLabel,
   serviceArea,
   scenarios,
+  customerName = "",
+  customerEmail = "",
 }: {
   businessId: string;
   businessName: string;
   tradeLabel: string;
   serviceArea?: string;
   scenarios: Scenario[];
+  customerName?: string;
+  customerEmail?: string;
 }) {
   const speech = useSpeech();
   const [turns, setTurns] = useState<TranscriptTurn[]>([]);
@@ -230,8 +234,8 @@ export function Receptionist({
                     <SlotPicker
                       businessId={businessId}
                       businessName={businessName}
-                      defaultName={captured.name || ""}
-                      defaultEmail={captured.email || ""}
+                      defaultName={captured.name || customerName}
+                      defaultEmail={captured.email || customerEmail}
                       defaultPhone={captured.phone || ""}
                       onBooked={(label, emailed) => {
                         // Keep the picker in its booked state (download stays); it

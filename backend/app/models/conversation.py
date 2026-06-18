@@ -14,6 +14,7 @@ class ChatConversation(Base):
 
     id: Mapped[str] = mapped_column(String, primary_key=True, default=new_id)
     business_id: Mapped[str] = mapped_column(String, index=True)
+    user_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)  # owning user
     title: Mapped[str] = mapped_column(String, default="New conversation")
     lead_name: Mapped[str] = mapped_column(String, default="")
     lead_email: Mapped[str] = mapped_column(String, default="")

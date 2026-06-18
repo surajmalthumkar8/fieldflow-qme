@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { aiChat, aiServiceEnabled, type AiTurn } from "@/lib/aiService";
+import { getCurrentUser } from "@/lib/authServer";
 
 export const dynamic = "force-dynamic";
 
@@ -31,16 +32,17 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
+  // Identify the signed-in customer from the auth cookie (not the browser body).
+  const user = await getCurrentUser();
   let businessName = body.businessName ?? "our team";
   let serviceArea = body.serviceArea ?? "";
-  const businessId = body.businessId ?? "default";
+  // The user's company is authoritative when signed in.
+  const businessId = user?.business_id ?? body.businessId ?? "default";
 
-  if (body.businessId) {
-    const business = await prisma.business.findUnique({ where: { id: body.businessId } });
-    if (business) {
-      businessName = business.name;
-      serviceArea = business.serviceArea || serviceArea;
-    }
+  const business = await prisma.business.findUnique({ where: { id: businessId } });
+  if (business) {
+    businessName = business.name;
+    serviceArea = business.serviceArea || serviceArea;
   }
 
   try {
@@ -51,6 +53,9 @@ export async function POST(req: Request) {
       history: Array.isArray(body.history) ? body.history : [],
       message: typeof body.message === "string" ? body.message : "",
       conversation_id: body.conversationId ?? null,
+      user_id: user?.id ?? null,
+      customer_name: user?.full_name ?? "",
+      customer_email: user?.email ?? "",
     });
     return NextResponse.json(result);
   } catch (err) {

@@ -27,7 +27,7 @@ async def _persist(db, body: ChatIn, reply: str, captured: dict) -> str | None:
             ).scalar_one_or_none()
         if convo is None:
             title = (body.message or "New conversation")[:50]
-            convo = ChatConversation(business_id=body.business_id, title=title)
+            convo = ChatConversation(business_id=body.business_id, user_id=body.user_id, title=title)
             db.add(convo)
             await db.flush()
         if body.message:
@@ -56,7 +56,13 @@ async def chat(body: ChatIn, db: AsyncSession = Depends(get_db)):
         except Exception:
             context = ""  # KB optional — never block the reply
 
-    system = loader.receptionist_system_prompt(body.business_name, body.service_area, context)
+    system = loader.receptionist_system_prompt(
+        body.business_name,
+        body.service_area,
+        context,
+        customer_name=body.customer_name,
+        customer_email=body.customer_email,
+    )
     messages = [{"role": "system", "content": system}]
     # Compact context window: only keep the last N turns so the model stays fast
     # and isn't overloaded (the receptionist only needs recent context to qualify).

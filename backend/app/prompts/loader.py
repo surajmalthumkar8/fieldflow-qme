@@ -24,18 +24,32 @@ def qualifying_fields() -> list[str]:
     return _load("persona.yaml").get("qualifying_fields", [])
 
 
-def receptionist_system_prompt(business_name: str, service_area: str, context: str = "") -> str:
+def receptionist_system_prompt(
+    business_name: str,
+    service_area: str,
+    context: str = "",
+    customer_name: str = "",
+    customer_email: str = "",
+) -> str:
     p = _load("persona.yaml")
     area = service_area or "the local area"
     kb_block = ""
     if context:
         kb_block = p.get("kb_template", "").replace("{{context}}", context)
+    customer_block = ""
+    if customer_name or customer_email:
+        customer_block = (
+            p.get("customer_template", "")
+            .replace("{{customer_name}}", customer_name or "(unknown)")
+            .replace("{{customer_email}}", customer_email or "(unknown)")
+        )
     return (
         p.get("system", "")
         .replace("{{persona}}", p.get("name", "Elara"))
         .replace("{{business}}", business_name)
         .replace("{{area}}", area)
         .replace("{{kb_block}}", kb_block)
+        .replace("{{customer_block}}", customer_block)
         .strip()
     )
 

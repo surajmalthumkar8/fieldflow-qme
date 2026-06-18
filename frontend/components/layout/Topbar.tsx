@@ -1,8 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useTransition } from "react";
-import { Cpu, ChevronDown, Sparkles, Building2, LogOut } from "lucide-react";
+import { Cpu, Sparkles, Building2, LogOut } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
 export interface TopbarBusiness {
@@ -21,17 +20,6 @@ export function Topbar({
   brainLive: boolean;
 }) {
   const router = useRouter();
-  const [pending, startTransition] = useTransition();
-
-  async function onSelect(e: React.ChangeEvent<HTMLSelectElement>) {
-    const businessId = e.target.value;
-    await fetch("/api/business/select", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ businessId }),
-    });
-    startTransition(() => router.refresh());
-  }
 
   async function onLogout() {
     await fetch("/api/auth/logout", { method: "POST" });
@@ -43,22 +31,9 @@ export function Topbar({
     <header className="flex h-16 shrink-0 items-center justify-between gap-4 border-b border-ink-200/70 bg-paper/80 px-4 backdrop-blur-md dark:border-ink-800 dark:bg-ink-950/80 lg:px-8">
       <div className="flex items-center gap-2.5">
         <Building2 className="h-4 w-4 text-ink-400" />
-        <span className="eyebrow hidden sm:inline">Client</span>
-        <div className="relative">
-          <select
-            value={activeId}
-            onChange={onSelect}
-            disabled={pending}
-            className="num appearance-none rounded-lg border border-ink-200 bg-white py-1.5 pl-3 pr-9 text-[13px] font-semibold text-ink-800 transition-colors hover:border-ink-300 dark:border-ink-700 dark:bg-ink-800 dark:text-ink-100"
-          >
-            {businesses.map((b) => (
-              <option key={b.id} value={b.id}>
-                {b.name}
-              </option>
-            ))}
-          </select>
-          <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400" />
-        </div>
+        <span className="text-[13px] font-semibold text-ink-800 dark:text-ink-100">
+          {businesses.find((b) => b.id === activeId)?.name ?? "—"}
+        </span>
       </div>
 
       <div className="flex items-center gap-2">

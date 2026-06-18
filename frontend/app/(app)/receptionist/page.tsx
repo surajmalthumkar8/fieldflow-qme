@@ -3,6 +3,7 @@ import { Building2 } from "lucide-react";
 import { Receptionist } from "@/components/receptionist/Receptionist";
 import { PERSONA_NAME } from "@/lib/persona";
 import { getActiveBusiness } from "@/lib/session";
+import { getCurrentUser } from "@/lib/authServer";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +17,7 @@ const SCENARIOS = [
 // Uses the signed-in user's COMPANY (set at registration/login). Conversations,
 // history and RAG all scope to this company's id.
 export default async function ReceptionistPage() {
-  const business = await getActiveBusiness();
+  const [business, user] = await Promise.all([getActiveBusiness(), getCurrentUser()]);
 
   if (!business) {
     return (
@@ -43,6 +44,8 @@ export default async function ReceptionistPage() {
         tradeLabel="Real Estate"
         serviceArea={business.serviceArea}
         scenarios={SCENARIOS}
+        customerName={user?.full_name ?? ""}
+        customerEmail={user?.email ?? ""}
       />
     </div>
   );

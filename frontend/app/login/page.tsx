@@ -1,7 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+
+interface Company {
+  id: string;
+  name: string;
+  serviceArea?: string;
+}
 
 export default function LoginPage() {
   const router = useRouter();
@@ -12,26 +18,36 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
-  const [companyName, setCompanyName] = useState("");
-  const [timezone, setTimezone] = useState("America/New_York");
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [businessId, setBusinessId] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+
+  // Load the companies a customer can register under.
+  useEffect(() => {
+    fetch("/api/businesses")
+      .then((r) => (r.ok ? r.json() : []))
+      .then((list: Company[]) => {
+        setCompanies(list);
+        if (list.length && !businessId) setBusinessId(list[0].id);
+      })
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
     setError("");
     const path = mode === "login" ? "/api/auth/login" : "/api/auth/register";
+    const body =
+      mode === "login"
+        ? { email, password }
+        : { email, password, full_name: fullName, business_id: businessId };
     const res = await fetch(path, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        email,
-        password,
-        full_name: fullName,
-        company_name: companyName,
-        timezone,
-      }),
+      body: JSON.stringify(body),
     });
     if (res.ok) {
       router.replace(next);
@@ -88,24 +104,27 @@ export default function LoginPage() {
                 />
               </label>
               <label className="block text-sm">
-                <span className="text-slate-400">Company name</span>
-                <input
-                  value={companyName}
-                  onChange={(e) => setCompanyName(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-white/10 bg-[#0b1020] px-3 py-2 outline-none focus:border-indigo-400"
-                  placeholder="Lone Star Realty"
-                />
-              </label>
-              <label className="block text-sm">
-                <span className="text-slate-400">Timezone</span>
+                <span className="text-slate-400">Company</span>
                 <select
-                  value={timezone}
-                  onChange={(e) => setTimezone(e.target.value)}
+                  value={businessId}
+                  onChange={(e) => setBusinessId(e.target.value)}
+                  required
                   className="mt-1 w-full rounded-lg border border-white/10 bg-[#0b1020] px-3 py-2 outline-none focus:border-indigo-400"
                 >
-                  <option value="America/New_York">New York (US Eastern)</option>
-                  <option value="Asia/Kolkata">India (IST)</option>
+                  {companies.length === 0 ? (
+                    <option value="">No companies available</option>
+                  ) : (
+                    companies.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                        {c.serviceArea ? ` — ${c.serviceArea}` : ""}
+                      </option>
+                    ))
+                  )}
                 </select>
+                <span className="mt-1 block text-[11px] text-slate-500">
+                  Register as a customer of one of our companies.
+                </span>
               </label>
             </>
           )}
