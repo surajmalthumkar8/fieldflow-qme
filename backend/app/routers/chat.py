@@ -11,6 +11,9 @@ from ..schemas import ChatAction, ChatIn, ChatOut
 
 router = APIRouter(tags=["ai"])
 
+# Keep only the most recent turns in the prompt (a sliding/compact window).
+MAX_HISTORY_TURNS = 12
+
 
 async def _persist(db, body: ChatIn, reply: str, captured: dict) -> str | None:
     """Save this turn (user + assistant) to a persisted conversation; return its id."""
@@ -55,7 +58,9 @@ async def chat(body: ChatIn, db: AsyncSession = Depends(get_db)):
 
     system = loader.receptionist_system_prompt(body.business_name, body.service_area, context)
     messages = [{"role": "system", "content": system}]
-    for t in body.history:
+    # Compact context window: only keep the last N turns so the model stays fast
+    # and isn't overloaded (the receptionist only needs recent context to qualify).
+    for t in body.history[-MAX_HISTORY_TURNS:]:
         role = "assistant" if t.role == "assistant" else "user"
         messages.append({"role": role, "content": t.content})
     # Opening turn: empty message -> let the model greet.

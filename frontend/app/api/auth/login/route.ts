@@ -34,5 +34,10 @@ export async function POST(req: Request) {
     path: "/",
     maxAge: 60 * 60 * 12, // 12h, matches backend session
   });
+  // Activate the user's company so the dashboard + receptionist show THEIR tenant.
+  const businessId = data?.user?.business_id;
+  if (businessId) {
+    res.cookies.set("qme_business", businessId, { sameSite: "lax", path: "/", maxAge: 60 * 60 * 12 });
+  }
   return res;
 }
