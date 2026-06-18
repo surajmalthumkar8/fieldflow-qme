@@ -8,6 +8,7 @@ from functools import lru_cache
 from pathlib import Path
 
 from dotenv import load_dotenv
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Load the repo-root .env (shared with the Next.js app) if present, then a
@@ -71,7 +72,8 @@ class Settings(BaseSettings):
     #     the invite is still bookable + downloadable. Gmail: use an App Password. ---
     smtp_host: str = ""
     smtp_port: int = 587
-    smtp_user: str = ""
+    # Accept either SMTP_USER or SMTP_USERNAME.
+    smtp_user: str = Field("", validation_alias=AliasChoices("smtp_user", "smtp_username"))
     smtp_password: str = ""
     smtp_from: str = ""  # defaults to smtp_user
 
