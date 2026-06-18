@@ -17,9 +17,9 @@ echo "Starting FastAPI on :8000 ..."
 ( cd backend && .venv/bin/uvicorn app.main:app --reload --port 8000 ) &
 API_PID=$!
 
-# --- Next.js app ---
+# --- Next.js app (frontend/) ---
 echo "Starting Next.js on :3000 ..."
-npm run dev &
+( cd frontend && npm run dev ) &
 WEB_PID=$!
 
 trap 'kill $API_PID $WEB_PID 2>/dev/null' EXIT INT TERM

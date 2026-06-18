@@ -23,20 +23,47 @@ with a recorded attribution report.** Sold as recovered revenue, never as "an AI
 | **Compliance** (`/compliance`) | Consent gate, **co-sender TCPA exposure**, A2P-under-client-EIN checklist, hard-coded disclosures, 5-year audit log | The moat — done-for-you delivery + documented compliance. |
 | **Business Config** (`/config`) | The single tenant config (services, hours, FAQ, escalation, pricing, A2P) | Feeds the voice prompt, FAQ/RAG, reactivation copy, A2P, and attribution at once. |
 
-## Run it (zero external accounts needed)
+## Repo layout
 
-Requires Node 18+ (built on Node 22).
-
-```bash
-cd qme-app
-npm install
-npm run setup     # generate Prisma client + create SQLite DB + seed demo data
-npm run dev       # http://localhost:3000
+```
+frontend/   Next.js 15 app (UI + CRUD API routes)  — the dashboard you see
+backend/    FastAPI AI/voice microservice (local Ollama, JWT auth, pgvector RAG, TTS)
+docs/       product_roadmap.md · research_findings.md · codebase_reference.md
+scripts/    dev.sh (run both services)
+docker-compose.yml
 ```
 
-Open **http://localhost:3000** → click **Open the dashboard**. Switch between the two
-seeded clients (HVAC + roofing) with the **Client** picker. To re-seed fresh demo data:
-`npm run db:reset`.
+## Run it — one Docker command
+
+```bash
+docker compose up
+```
+
+Brings up **Postgres + pgvector**, the **FastAPI AI service** (:8000), and the **Next.js app**
+(:3000) with an automatic migrate + seed. By default the AI service reuses **Ollama on your
+host** (so it doesn't re-download models); to run Ollama in a container too:
+`docker compose --profile ollama up`. Open **http://localhost:3000**.
+
+> Voice note: the macOS `say` fallback only works outside Docker; in-container voice needs the
+> Kokoro model files (see `backend/README.md`).
+
+## Run it — local dev (no Docker)
+
+Requires Node 18+, Python 3.11+, a local **Postgres** (`createdb fieldflow`, `CREATE EXTENSION vector;`),
+and **Ollama** running with the models pulled.
+
+```bash
+# frontend (Next.js)
+cd frontend && npm install && npm run setup   # prisma generate + db push + seed
+npm run dev                                    # http://localhost:3000
+
+# backend (FastAPI) — in another terminal
+cd backend && python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
+.venv/bin/uvicorn app.main:app --reload --port 8000   # http://localhost:8000/docs
+```
+
+Or run both at once: `./scripts/dev.sh`. The repo-root `.env` is shared by both services
+(the frontend reads it via a `frontend/.env` symlink). To re-seed: `cd frontend && npm run db:reset`.
 
 ## Dual-mode AI / integrations (works with or without keys)
 

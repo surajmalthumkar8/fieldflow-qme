@@ -1,0 +1,8 @@
+node_modules
+.next
+out
+build
+.env
+lib/generated
+prisma/dev.db
+npm-debug.log*
