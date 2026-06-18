@@ -17,7 +17,7 @@ def _load(name: str) -> dict:
 
 
 def persona_name() -> str:
-    return _load("persona.yaml").get("name", "Mira")
+    return _load("persona.yaml").get("name", "Elara")
 
 
 def qualifying_fields() -> list[str]:
@@ -32,7 +32,7 @@ def receptionist_system_prompt(business_name: str, service_area: str, context: s
         kb_block = p.get("kb_template", "").replace("{{context}}", context)
     return (
         p.get("system", "")
-        .replace("{{persona}}", p.get("name", "Mira"))
+        .replace("{{persona}}", p.get("name", "Elara"))
         .replace("{{business}}", business_name)
         .replace("{{area}}", area)
         .replace("{{kb_block}}", kb_block)

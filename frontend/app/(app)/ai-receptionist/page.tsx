@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { MiraAvatar } from "@/components/MiraAvatar";
+import { AgentAvatar } from "@/components/AgentAvatar";
+import { PERSONA_NAME } from "@/lib/persona";
 
 type Turn = { role: "user" | "assistant"; content: string };
 
@@ -139,9 +140,9 @@ export default function AiReceptionistPage() {
       {/* Conversation */}
       <section className="rounded-2xl border border-white/10 bg-white/[0.03]">
         <header className="flex items-center gap-4 border-b border-white/10 p-5">
-          <MiraAvatar speaking={speaking} size={64} />
+          <AgentAvatar speaking={speaking} size={64} />
           <div className="flex-1">
-            <h1 className="text-lg font-semibold text-slate-100">Mira · AI Receptionist</h1>
+            <h1 className="text-lg font-semibold text-slate-100">{PERSONA_NAME} · AI Receptionist</h1>
             <p className="text-sm text-slate-400">
               {BUSINESS.name} — {BUSINESS.area} · powered by local Ollama
             </p>
@@ -151,7 +152,7 @@ export default function AiReceptionistPage() {
             className={`rounded-lg px-3 py-1.5 text-sm ring-1 transition ${
               voiceOn ? "bg-indigo-500/20 text-indigo-200 ring-indigo-400/40" : "bg-white/5 text-slate-400 ring-white/10"
             }`}
-            title="Toggle Mira's voice"
+            title={`Toggle ${PERSONA_NAME}'s voice`}
           >
             {voiceOn ? "🔊 Voice on" : "🔇 Voice off"}
           </button>

@@ -50,7 +50,7 @@ async def chat(body: ChatIn, db: AsyncSession = Depends(get_db)):
         action = {"type": action}
     elif not isinstance(action, dict):
         action = {}
-    valid_actions = {"schedule", "route_to_agent", "capture_contact", "none"}
+    valid_actions = {"schedule", "route_to_agent", "capture_contact", "raise_ticket", "none"}
     atype = action.get("type") if action.get("type") in valid_actions else "none"
     notes = action.get("notes")
     if not isinstance(notes, str):

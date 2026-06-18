@@ -1,9 +1,9 @@
-// "Mira" — the AI receptionist persona. Self-contained SVG portrait (no external
-// asset) of a friendly, professional female receptionist with a headset.
+// The AI agent's avatar (persona-agnostic). Self-contained SVG portrait (no
+// external asset) of a friendly, professional female receptionist with a headset.
 // `speaking` adds a soft pulsing ring while her voice plays.
 // Swap this for a photo/animated portrait later (drop an <img> in place).
 
-export function MiraAvatar({
+export function AgentAvatar({
   speaking = false,
   size = 160,
 }: {
@@ -24,7 +24,7 @@ export function MiraAvatar({
         height={size}
         className="relative rounded-full shadow-lg"
         role="img"
-        aria-label="Mira, the AI receptionist"
+        aria-label="AI receptionist"
       >
         <defs>
           <linearGradient id="ava-bg" x1="0" y1="0" x2="1" y2="1">

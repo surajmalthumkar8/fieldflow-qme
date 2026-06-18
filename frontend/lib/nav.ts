@@ -26,17 +26,10 @@ export const NAV: NavItem[] = [
   },
   {
     href: "/ai-receptionist",
-    label: "Ava (Real Estate AI)",
+    label: "AI Receptionist",
     icon: "Sparkles",
     group: "Run it",
-    description: "Real local-LLM receptionist with live lead scoring + voice.",
-  },
-  {
-    href: "/receptionist",
-    label: "AI Receptionist (demo)",
-    icon: "PhoneCall",
-    group: "Run it",
-    description: "Scripted home-services demo — talk to it and watch it book.",
+    description: "Elara — real local-LLM receptionist with live lead scoring + voice.",
   },
   {
     href: "/reactivation",
