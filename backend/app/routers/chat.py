@@ -1,10 +1,12 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
+import asyncio
+
 from sqlalchemy import select
 
 from ..services import llm, rag
-from ..core.database import get_db
+from ..core.database import SessionLocal, get_db
 from ..models import ChatConversation, ChatMessage
 from ..prompts import loader
 from ..schemas import ChatAction, ChatIn, ChatOut
@@ -13,6 +15,56 @@ router = APIRouter(tags=["ai"])
 
 # Keep only the most recent turns in the prompt (a sliding/compact window).
 MAX_HISTORY_TURNS = 12
+
+
+def _clampi(v) -> int:
+    try:
+        return max(0, min(100, int(float(v))))
+    except (TypeError, ValueError):
+        return 0
+
+
+def _numf(v) -> float:
+    try:
+        return float(v)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+async def _score_lead(conversation_id: str, transcript: str, profile: str) -> None:
+    """Background: qualify the conversation and store the lead grade/score on it
+    so the agent's leads view is always up to date (auto-score after each turn)."""
+    try:
+        user = "Transcript:\n" + transcript + (f"\n\nKnown customer profile: {profile}" if profile else "")
+        data = await llm.chat_json(
+            "qualifier",
+            [{"role": "system", "content": loader.qualify_system()}, {"role": "user", "content": user}],
+            temperature=0.2,
+        )
+        grade = str(data.get("leadGrade", "COLD")).upper()
+        if grade not in ("HOT", "WARM", "COLD"):
+            grade = "COLD"
+        async with SessionLocal() as db:
+            convo = (
+                await db.execute(select(ChatConversation).where(ChatConversation.id == conversation_id))
+            ).scalar_one_or_none()
+            if not convo:
+                return
+            convo.grade = grade
+            convo.score = _clampi(data.get("leadScore"))
+            convo.intent_score = _clampi(data.get("intentScore"))
+            convo.budget_estimate = _numf(data.get("budgetEstimate"))
+            convo.opportunity = _numf(data.get("opportunitySize"))
+            convo.rationale = str(data.get("rationale", ""))[:500]
+            cap = data.get("captured") or {}
+            if isinstance(cap, dict):
+                if cap.get("name"):
+                    convo.lead_name = str(cap["name"])[:120]
+                if cap.get("email"):
+                    convo.lead_email = str(cap["email"])[:200]
+            await db.commit()
+    except Exception:
+        pass  # scoring is best-effort, never affects the chat
 
 
 async def _persist(db, body: ChatIn, reply: str, captured: dict) -> str | None:
@@ -115,6 +167,13 @@ async def chat(body: ChatIn, db: AsyncSession = Depends(get_db)):
     reply = str(data.get("reply") or "Sorry, could you say that again?")
     clean_captured = {k: str(v) for k, v in captured.items() if v is not None}
     conv_id = await _persist(db, body, reply, clean_captured)
+    # Auto-score the lead in the background (never blocks the reply).
+    if conv_id and (body.message or body.history):
+        lines = [("Visitor" if t.role == "user" else "Elara") + ": " + t.content for t in body.history]
+        if body.message:
+            lines.append("Visitor: " + body.message)
+        lines.append("Elara: " + reply)
+        asyncio.create_task(_score_lead(conv_id, "\n".join(lines), body.customer_profile))
     return ChatOut(
         reply=reply,
         qualified=bool(data.get("qualified")),

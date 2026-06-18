@@ -2,7 +2,7 @@
 Lives in the `techages` schema (no FK to Prisma's Business — business_id is a string)."""
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, String, Text, func
+from sqlalchemy import DateTime, Float, ForeignKey, Integer, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ..core.database import SCHEMA, Base
@@ -18,6 +18,15 @@ class ChatConversation(Base):
     title: Mapped[str] = mapped_column(String, default="New conversation")
     lead_name: Mapped[str] = mapped_column(String, default="")
     lead_email: Mapped[str] = mapped_column(String, default="")
+    # Lead scoring (auto-filled after each turn) + agent assignment.
+    grade: Mapped[str] = mapped_column(String, default="")  # HOT | WARM | COLD | ""
+    score: Mapped[int] = mapped_column(Integer, default=0)
+    intent_score: Mapped[int] = mapped_column(Integer, default=0)
+    budget_estimate: Mapped[float] = mapped_column(Float, default=0)
+    opportunity: Mapped[float] = mapped_column(Float, default=0)
+    rationale: Mapped[str] = mapped_column(String, default="")
+    assigned_agent_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    assigned_agent_name: Mapped[str] = mapped_column(String, default="")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()

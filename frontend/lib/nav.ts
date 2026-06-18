@@ -60,10 +60,10 @@ export const NAV: NavItem[] = [
   },
   {
     href: "/leads",
-    label: "Leads & Consent",
+    label: "Leads",
     icon: "Users",
     group: "Run it",
-    description: "Upload the list, audit consent, run the scrubs.",
+    description: "Customers who reached out — auto-graded, with what they want.",
     roles: COMPANY,
   },
   {

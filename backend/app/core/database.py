@@ -68,3 +68,17 @@ async def init_db() -> None:
         await conn.execute(
             text(f"ALTER TABLE {SCHEMA}.app_user ADD COLUMN IF NOT EXISTS profile varchar NOT NULL DEFAULT '{{}}'")
         )
+        # Lead scoring + assignment columns on conversations.
+        for col, ddl in [
+            ("grade", "varchar NOT NULL DEFAULT ''"),
+            ("score", "integer NOT NULL DEFAULT 0"),
+            ("intent_score", "integer NOT NULL DEFAULT 0"),
+            ("budget_estimate", "double precision NOT NULL DEFAULT 0"),
+            ("opportunity", "double precision NOT NULL DEFAULT 0"),
+            ("rationale", "varchar NOT NULL DEFAULT ''"),
+            ("assigned_agent_id", "varchar"),
+            ("assigned_agent_name", "varchar NOT NULL DEFAULT ''"),
+        ]:
+            await conn.execute(
+                text(f"ALTER TABLE {SCHEMA}.chat_conversation ADD COLUMN IF NOT EXISTS {col} {ddl}")
+            )

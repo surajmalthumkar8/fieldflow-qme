@@ -1,145 +1,140 @@
-import { Ban, CheckCircle2, MailCheck, ShieldAlert, Users } from "lucide-react";
-import { prisma } from "@/lib/db";
-import { getActiveBusiness } from "@/lib/session";
-import { smsBlockReasons } from "@/lib/compliance";
-import type { ConsentStatus } from "@/lib/types";
-import {
-  Card,
-  CardBody,
-  CardHeader,
-  EmptyState,
-  PageHeader,
-  SectionLabel,
-  StatCard,
-} from "@/components/ui/primitives";
-import { LeadsTable } from "@/components/leads/LeadsTable";
-import { CsvUpload } from "@/components/leads/CsvUpload";
-import { ScrubButton } from "@/components/leads/ScrubButton";
-import { needsReconsent } from "@/components/leads/consent";
-import type { LeadRow } from "@/components/leads/types";
+"use client";
 
-export const dynamic = "force-dynamic";
+import { useCallback, useEffect, useState } from "react";
+import { CalendarCheck, Loader2, UserCheck } from "lucide-react";
+import { PageHeader } from "@/components/ui/primitives";
 
-export default async function LeadsPage() {
-  const business = await getActiveBusiness();
+interface Lead {
+  id: string;
+  name: string;
+  email: string;
+  grade: string;
+  score: number;
+  budgetEstimate: number;
+  opportunity: number;
+  rationale: string;
+  profile: Record<string, string>;
+  bookedAt: string | null;
+  assignedAgentName: string;
+}
 
-  if (!business) {
-    return (
-      <div className="space-y-6">
-        <PageHeader
-          title="Leads & consent"
-          description="The client's own, consented list — scrubbed and gated before any automation."
-        />
-        <EmptyState
-          icon={<Users className="h-8 w-8" />}
-          title="No business configured yet"
-          description="Run `npm run setup` to seed the demo data, then reload this page."
-        />
-      </div>
-    );
+const GRADE: Record<string, string> = {
+  HOT: "bg-danger-50 text-danger-700 ring-danger-200 dark:bg-danger-500/15 dark:text-danger-300 dark:ring-danger-500/30",
+  WARM: "bg-flare-50 text-flare-700 ring-flare-300 dark:bg-flare-500/15 dark:text-flare-300 dark:ring-flare-500/30",
+  COLD: "bg-signal-50 text-signal-700 ring-signal-200 dark:bg-signal-500/15 dark:text-signal-300 dark:ring-signal-500/30",
+};
+
+function usd(n: number) {
+  return n ? `$${Math.round(n / 1000)}k` : "—";
+}
+function wants(l: Lead) {
+  const p = l.profile || {};
+  const parts = [p.intent, p.propertyType, p.location, p.budget && `budget ${p.budget}`, p.timeline].filter(Boolean);
+  return parts.length ? parts.join(" · ") : "—";
+}
+
+export default function AgentLeadsPage() {
+  const [leads, setLeads] = useState<Lead[] | null>(null);
+  const [assigning, setAssigning] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    const r = await fetch("/api/agent/leads", { cache: "no-store" });
+    setLeads(r.ok ? await r.json() : []);
+  }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  async function take(id: string) {
+    setAssigning(id);
+    await fetch(`/api/agent/leads/${id}/assign`, { method: "POST" });
+    await load();
+    setAssigning(null);
   }
 
-  const leadsRaw = await prisma.lead.findMany({
-    where: { businessId: business.id },
-    orderBy: { createdAt: "desc" },
-  });
-
-  // Serialize for the client table (Dates -> ISO strings, precompute block reasons).
-  const leads: LeadRow[] = leadsRaw.map((l) => ({
-    id: l.id,
-    firstName: l.firstName,
-    lastName: l.lastName,
-    phone: l.phone,
-    email: l.email,
-    source: l.source,
-    consentStatus: l.consentStatus as ConsentStatus,
-    consentSource: l.consentSource,
-    consentChannel: l.consentChannel,
-    dncStatus: l.dncStatus,
-    reassignedStatus: l.reassignedStatus,
-    smsEligible: l.smsEligible,
-    blockReasons: smsBlockReasons({
-      consentStatus: l.consentStatus as ConsentStatus,
-      dncStatus: l.dncStatus,
-      reassignedStatus: l.reassignedStatus,
-    }),
-    createdAt: l.createdAt.toISOString(),
-  }));
-
-  const total = leads.length;
-  const eligibleCount = leads.filter((l) => l.smsEligible).length;
-  const reconsentCount = leads.filter((l) => needsReconsent(l.consentStatus)).length;
-  const optedOutCount = leads.filter((l) => l.consentStatus === "OPTED_OUT").length;
-
   return (
-    <div className="animate-fade-in space-y-6">
+    <div className="space-y-6">
       <PageHeader
-        title="Leads & consent"
-        description="The client's own, consented list — scrubbed against the National DNC + FCC Reassigned-Numbers DB and gated by written consent before any automation touches it."
-      >
-        <ScrubButton />
-      </PageHeader>
+        title="Leads"
+        description="Everyone who reached out to your AI receptionist — auto-graded, with what they want. Claim a lead to follow up."
+      />
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard
-          label="Total leads"
-          value={total}
-          sub="On the active list"
-          icon={<Users className="h-4 w-4" />}
-        />
-        <StatCard
-          label="SMS-eligible"
-          value={eligibleCount}
-          sub="Written/re-consent + scrubbed clear"
-          tone="money"
-          icon={<CheckCircle2 className="h-4 w-4" />}
-        />
-        <StatCard
-          label="Needs re-consent"
-          value={reconsentCount}
-          sub="No PEWC yet — voice-only"
-          tone="warn"
-          icon={<ShieldAlert className="h-4 w-4" />}
-        />
-        <StatCard
-          label="Opted out"
-          value={optedOutCount}
-          sub="Suppressed permanently"
-          tone="danger"
-          icon={<Ban className="h-4 w-4" />}
-        />
+      <div className="overflow-hidden rounded-2xl border border-ink-200/80 bg-white shadow-card dark:border-ink-700/70 dark:bg-ink-900">
+        <table className="w-full text-sm">
+          <thead className="border-b border-ink-100 bg-paper-50 text-left text-xs uppercase tracking-wide text-ink-500 dark:border-ink-800 dark:bg-ink-950/40 dark:text-ink-400">
+            <tr>
+              <th className="px-4 py-3 font-semibold">Customer</th>
+              <th className="px-4 py-3 font-semibold">Looking for</th>
+              <th className="px-4 py-3 font-semibold">Grade</th>
+              <th className="px-4 py-3 font-semibold">Budget</th>
+              <th className="px-4 py-3 font-semibold">Call</th>
+              <th className="px-4 py-3 font-semibold">Owner</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-ink-100 dark:divide-ink-800">
+            {leads === null ? (
+              <tr>
+                <td colSpan={6} className="px-4 py-10 text-center text-ink-400">
+                  <Loader2 className="mx-auto h-5 w-5 animate-spin" />
+                </td>
+              </tr>
+            ) : leads.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="px-4 py-10 text-center text-sm text-ink-400">
+                  No leads yet — they appear here when customers chat with your AI receptionist.
+                </td>
+              </tr>
+            ) : (
+              leads.map((l) => (
+                <tr key={l.id} className="align-top hover:bg-paper-50 dark:hover:bg-ink-800/40">
+                  <td className="px-4 py-3">
+                    <div className="font-medium text-ink-900 dark:text-ink-100">{l.name}</div>
+                    <div className="text-xs text-ink-400">{l.email || "—"}</div>
+                  </td>
+                  <td className="max-w-[18rem] px-4 py-3 text-ink-700 dark:text-ink-300">
+                    <div>{wants(l)}</div>
+                    {l.rationale ? <div className="mt-0.5 text-xs text-ink-400">{l.rationale}</div> : null}
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ring-inset ${GRADE[l.grade] || "bg-ink-100 text-ink-500 ring-ink-200 dark:bg-ink-800 dark:text-ink-400 dark:ring-ink-700"}`}>
+                      {l.grade}
+                      {l.score ? ` ${l.score}` : ""}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 num text-ink-700 dark:text-ink-300">{usd(l.budgetEstimate)}</td>
+                  <td className="px-4 py-3 text-ink-700 dark:text-ink-300">
+                    {l.bookedAt ? (
+                      <span className="inline-flex items-center gap-1 text-money-600 dark:text-money-400">
+                        <CalendarCheck className="h-3.5 w-3.5" />
+                        {new Date(l.bookedAt).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+                      </span>
+                    ) : (
+                      "—"
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
+                    {l.assignedAgentName ? (
+                      <span className="inline-flex items-center gap-1 text-xs font-medium text-ink-700 dark:text-ink-300">
+                        <UserCheck className="h-3.5 w-3.5 text-money-500" /> {l.assignedAgentName}
+                      </span>
+                    ) : (
+                      <button
+                        onClick={() => take(l.id)}
+                        disabled={assigning === l.id}
+                        className="inline-flex items-center gap-1 rounded-lg bg-signal-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-signal-700 disabled:opacity-60"
+                      >
+                        {assigning === l.id ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
+                        I&apos;ll take this
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
       </div>
-
-      <SectionLabel>Import &amp; re-consent</SectionLabel>
-
-      <Card>
-        <CardHeader
-          title="Import a consented list"
-          subtitle="CSV upload runs the re-consent gate + DNC/Reassigned scrubs on every row"
-        />
-        <CardBody className="pt-0">
-          <CsvUpload />
-        </CardBody>
-      </Card>
-
-      <SectionLabel>The list</SectionLabel>
-
-      <Card>
-        <CardHeader
-          title="Leads"
-          subtitle="Color-coded by consent — only WRITTEN/RECONSENTED + scrubbed-clear leads are SMS-eligible"
-          action={
-            <span className="inline-flex items-center text-xs text-ink-400">
-              <MailCheck className="mr-1 inline h-3.5 w-3.5" />
-              <span className="num mr-1">{eligibleCount}</span> of{" "}
-              <span className="num mx-1">{total}</span> eligible
-            </span>
-          }
-        />
-        <CardBody className="pt-0">
-          <LeadsTable leads={leads} />
-        </CardBody>
-      </Card>
     </div>
   );
 }
