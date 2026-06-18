@@ -41,3 +41,7 @@ yarn-error.log*
 # python backend (also see backend/.gitignore)
 backend/.venv/
 __pycache__/
+
+# playwright / screenshots
+.playwright-mcp/
+/*.png
