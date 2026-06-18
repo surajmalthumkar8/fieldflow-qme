@@ -6,7 +6,7 @@ from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ..core.config import EMBEDDING_DIM
-from ..core.database import Base
+from ..core.database import SCHEMA, Base
 from .auth import new_id
 
 
@@ -33,7 +33,7 @@ class KbChunk(Base):
 
     id: Mapped[str] = mapped_column(String, primary_key=True, default=new_id)
     document_id: Mapped[str] = mapped_column(
-        ForeignKey("kb_document.id", ondelete="CASCADE"), index=True
+        ForeignKey(f"{SCHEMA}.kb_document.id", ondelete="CASCADE"), index=True
     )
     business_id: Mapped[str] = mapped_column(String, index=True)
     chunk_index: Mapped[int] = mapped_column(Integer, default=0)

@@ -56,6 +56,7 @@ export function Receptionist({
       if (busy) return;
       setBusy(true);
       setError(null);
+      if (!isStart) setShowScheduler(false); // clear any prior inline scheduler
       const trimmed = userMessage.trim();
 
       if (!isStart && trimmed) {
@@ -215,8 +216,35 @@ export function Receptionist({
               title="Live transcript"
               subtitle={`Everything you say and ${PERSONA_NAME} says.`}
             />
-            <div className="mt-2 flex min-h-0 flex-1 flex-col border-t border-ink-100">
-              <Transcript turns={turns} thinking={status === "thinking"} />
+            <div className="mt-2 flex min-h-0 flex-1 flex-col border-t border-ink-100 dark:border-ink-800">
+              <Transcript
+                turns={turns}
+                thinking={status === "thinking"}
+                footer={
+                  showScheduler ? (
+                    <SlotPicker
+                      businessId={businessId}
+                      businessName={businessName}
+                      defaultName={captured.name || ""}
+                      defaultEmail={captured.email || ""}
+                      defaultPhone={captured.phone || ""}
+                      onBooked={(label, emailed) => {
+                        // Keep the picker in its booked state (download stays); it
+                        // clears when the visitor sends their next message.
+                        const confirm: TranscriptTurn = {
+                          role: "assistant",
+                          content: emailed
+                            ? `You're all set for ${label} — I've emailed the calendar invite. An agent will call you then.`
+                            : `You're all set for ${label}. An agent will call you then — you can add it to your calendar from the invite above.`,
+                        };
+                        setTurns((t) => [...t, confirm]);
+                        historyRef.current = [...historyRef.current, confirm];
+                        if (voiceOnRef.current) void speech.speak(confirm.content);
+                      }}
+                    />
+                  ) : null
+                }
+              />
 
               {/* Composer */}
               <div className="border-t border-ink-100 p-3">
@@ -265,29 +293,6 @@ export function Receptionist({
               </div>
             </div>
           </Card>
-
-          {showScheduler ? (
-            <div className="mt-4">
-              <SlotPicker
-                businessId={businessId}
-                businessName={businessName}
-                defaultName={captured.name || ""}
-                defaultEmail={captured.email || ""}
-                defaultPhone={captured.phone || ""}
-                onBooked={(label) => {
-                  // Keep the picker mounted so its "Add to calendar (.ics)"
-                  // download stays available; it switches to its booked state.
-                  const confirm: TranscriptTurn = {
-                    role: "assistant",
-                    content: `You're all set for ${label}. I've sent the calendar invite — an agent will call you then.`,
-                  };
-                  setTurns((t) => [...t, confirm]);
-                  historyRef.current = [...historyRef.current, confirm];
-                  if (voiceOnRef.current) void speech.speak(confirm.content);
-                }}
-              />
-            </div>
-          ) : null}
         </div>
       </div>
     </div>

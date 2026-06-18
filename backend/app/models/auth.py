@@ -6,7 +6,7 @@ from datetime import datetime
 from sqlalchemy import DateTime, ForeignKey, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from ..core.database import Base
+from ..core.database import SCHEMA, Base
 
 
 def new_id() -> str:
@@ -37,7 +37,7 @@ class AppSession(Base):
     __tablename__ = "app_session"
 
     id: Mapped[str] = mapped_column(String, primary_key=True, default=new_id)
-    user_id: Mapped[str] = mapped_column(ForeignKey("app_user.id", ondelete="CASCADE"), index=True)
+    user_id: Mapped[str] = mapped_column(ForeignKey(f"{SCHEMA}.app_user.id", ondelete="CASCADE"), index=True)
     jti: Mapped[str] = mapped_column(String, unique=True, index=True, default=new_id)
     user_agent: Mapped[str] = mapped_column(String, default="")
     ip: Mapped[str] = mapped_column(String, default="")

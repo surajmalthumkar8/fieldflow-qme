@@ -1,110 +1,123 @@
-# FieldFlow — the QME engine (working MVP)
+# Techages AI — AI Receptionist (FieldFlow / QME engine)
 
-**▶ Live demo: https://qme-app.vercel.app**  ·  Code: this repo.
+A **local-first AI receptionist** for **US real-estate** businesses (agencies, brokers, realtors,
+investors). A website visitor can **chat or talk** to **Elara**, the AI receptionist — she answers
+questions, **qualifies and scores the lead** (Hot/Warm/Cold + budget + opportunity), and **books a
+meeting** with conflict-safe scheduling that **emails a real calendar invite**. Everything runs on
+**local models** (Ollama + Kokoro voice) so the marginal cost per conversation is ≈ $0.
 
-A working demonstration of the **TechAegisAI "Qualified Meetings" (QME)** engine: a
-**done-for-you AI service that books held, high-ticket home-services jobs** (HVAC
-replacement, roofing) for owner-operated US contractors — and **proves every dollar
-with a recorded attribution report.** Sold as recovered revenue, never as "an AI agent."
+> Vertical-configurable — real estate today, other verticals via the YAML prompts later.
 
-> Ships under the sub-brand **FieldFlow** ("Powered by TechAegisAI") — never the
-> $40k-enterprise parent brand. Built and run from India (3-person team), sold to
-> US contractors. The strategy was validated against the market (competitors:
-> RevSquared, Avoca, Netic, Sameday, Podium, Hatch→Yelp $270M) before this MVP was built.
+## What's inside
 
-## What it demonstrates (the whole machine)
-
-| Module | What you see | Why it matters |
-|---|---|---|
-| **Attribution dashboard** (`/dashboard`) | Funnel `call → qualified → booked → HELD → $ recovered`, ROI vs. monthly cost, held high-ticket jobs table | **This is the product.** Every pricing & positioning advantage depends on it. |
-| **AI Receptionist** (`/receptionist`) | A live, in-browser AI front desk you can **talk to (voice) or type to** — it qualifies and **books a real job** that lands on the dashboard | The durable retainer. Maps 1:1 to a Vapi/Retell voice agent in production. |
-| **Reactivation** (`/reactivation`) | AI-composed SMS to the consented dormant list → simulate replies → booked/held jobs | The pilot hook & proof generator (a one-time "sugar high"). |
-| **Leads & Consent** (`/leads`) | CSV upload, per-lead consent audit, DNC + Reassigned-number scrubs, re-consent gate | Only consented, scrubbed leads are messageable. |
-| **Compliance** (`/compliance`) | Consent gate, **co-sender TCPA exposure**, A2P-under-client-EIN checklist, hard-coded disclosures, 5-year audit log | The moat — done-for-you delivery + documented compliance. |
-| **Business Config** (`/config`) | The single tenant config (services, hours, FAQ, escalation, pricing, A2P) | Feeds the voice prompt, FAQ/RAG, reactivation copy, A2P, and attribution at once. |
-
-## Repo layout
-
-```
-frontend/   Next.js 15 app (UI + CRUD API routes)  — the dashboard you see
-backend/    FastAPI AI/voice microservice (local Ollama, JWT auth, pgvector RAG, TTS)
-docs/       product_roadmap.md · research_findings.md · codebase_reference.md
-scripts/    dev.sh (run both services)
-docker-compose.yml
-```
-
-## Run it — one Docker command
-
-```bash
-docker compose up
-```
-
-Brings up **Postgres + pgvector**, the **FastAPI AI service** (:8000), and the **Next.js app**
-(:3000) with an automatic migrate + seed. By default the AI service reuses **Ollama on your
-host** (so it doesn't re-download models); to run Ollama in a container too:
-`docker compose --profile ollama up`. Open **http://localhost:3000**.
-
-> Voice note: the macOS `say` fallback only works outside Docker; in-container voice needs the
-> Kokoro model files (see `backend/README.md`).
-
-## Run it — local dev (no Docker)
-
-Requires Node 18+, Python 3.11+, a local **Postgres** (`createdb fieldflow`, `CREATE EXTENSION vector;`),
-and **Ollama** running with the models pulled.
-
-```bash
-# frontend (Next.js)
-cd frontend && npm install && npm run setup   # prisma generate + db push + seed
-npm run dev                                    # http://localhost:3000
-
-# backend (FastAPI) — in another terminal
-cd backend && python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
-.venv/bin/uvicorn app.main:app --reload --port 8000   # http://localhost:8000/docs
-```
-
-Or run both at once: `./scripts/dev.sh`. The repo-root `.env` is shared by both services
-(the frontend reads it via a `frontend/.env` symlink). To re-seed: `cd frontend && npm run db:reset`.
-
-## Dual-mode AI / integrations (works with or without keys)
-
-The app is fully functional with **no API keys** — it uses a deterministic **demo brain**
-and **simulated** Twilio/Cal.com adapters. Add keys in `.env` (see `.env.example`) to switch
-to the real production paths — no code changes:
-
-- `ANTHROPIC_API_KEY` → the receptionist + SMS qualifier run on **live Claude Haiku** (the
-  topbar badge flips from "Demo brain" to "Live Claude Haiku").
-- `TWILIO_*` → real SMS sends via the Twilio REST API.
-- `CALCOM_API_KEY` / `VAPI_API_KEY` → wire real booking / production inbound voice.
-
-## Tech & architecture
-
-- **Next.js 15** (App Router, RSC) · **TypeScript** · **Tailwind v3** · **Prisma + SQLite**
-  (the schema maps 1:1 to **Supabase Postgres** — change the datasource provider + add
-  row-level-security on `businessId` for production multi-tenant).
-- **AI brain**: `lib/ai/brain.ts` — one contract, dual engines (live Claude / demo).
-- **Compliance**: `lib/compliance.ts` — the consent gate, scrubs, disclosures, A2P steps.
-- **Attribution**: `lib/attribution.ts` — the funnel + ROI math.
-- See [`CONTRACTS.md`](CONTRACTS.md) for the full internal interface map.
-
-```
-Inbound:      caller → (Twilio) → Vapi/Retell + Claude → qualify → Cal.com → Supabase → dashboard
-Reactivation: consented CSV → re-consent gate → Twilio SMS (Claude-written) → reply booked → dashboard
-```
-
-## Production swaps (documented, not built — keep the MVP small)
-
-| Demo | Production |
+| Area | What it does |
 |---|---|
-| SQLite | Supabase Postgres + RLS by `businessId` |
-| Demo brain | Claude Haiku via `ANTHROPIC_API_KEY` |
-| Browser Web Speech voice | Vapi/Retell voice agent on a Twilio number |
-| Simulated SMS | Twilio A2P 10DLC (one Standard Brand per client, client's US EIN) |
-| Cookie tenant switch | Supabase Auth |
+| **AI Receptionist** (`/receptionist`) | "Elara" — real local-LLM chat + tap-to-talk voice, RAG-grounded, with live transcript. Qualifies, answers, schedules. |
+| **Scheduling** | Real availability (timezone-aware: New York / India), **atomic booking** (no double-booking), **.ics calendar invite** emailed + downloadable. |
+| **Lead engine** | Hot/Warm/Cold grade + lead/intent score + budget estimate + opportunity size + captured details. |
+| **Knowledge base (RAG)** | Per-business docs → pgvector semantic search to ground answers. |
+| **Dashboard** (`/dashboard`) | Attribution funnel + ROI. Plus leads, conversations, compliance, config. |
+| **Auth** | JWT login + sessions; light/dark mode. |
 
-## Compliance is built in (the non-negotiables)
+## Architecture
 
-Only a client's **own, consented** list is ever messaged; automated SMS/AI-voice needs
-**prior express written consent (PEWC)** per lead; the agency is a **co-sender → directly
-liable** ($500–1,500/msg); A2P registered under the **client's US EIN**; every AI call
-hard-codes **AI-identity + recording disclosure + opt-out**; **DNC + Reassigned-number**
-scrubs before every campaign; **never** promise projected earnings — sell booked/held jobs.
+```
+frontend/   Next.js 15 (UI + CRUD API routes, Prisma)        → :3000
+backend/    FastAPI service (LangChain→Ollama, JWT, RAG,      → :8000
+            Kokoro voice, scheduling+email)
+            ├─ Postgres `public` schema  (Prisma: app data)
+            └─ Postgres `techages` schema (FastAPI: auth, KB, appointments)
+PostgreSQL + pgvector · Ollama (local LLMs) · Kokoro (local TTS)
+```
+
+The two services share one Postgres DB safely via **separate schemas** (Prisma → `public`,
+FastAPI → `techages`), so neither tool's migrations touch the other's tables.
+
+---
+
+## Requirements
+
+- **Node 18+** and **Python 3.11+**
+- **PostgreSQL 14+** with the **pgvector** extension
+- **Ollama** (https://ollama.com) — runs the local LLMs
+- ~**12 GB free RAM** to hold the models comfortably; a GPU makes voice/chat snappier (CPU works, slower)
+- macOS or Linux (the setup script supports brew + apt)
+
+## Quick start — one command
+
+```bash
+./scripts/setup.sh          # installs deps, sets up the DB + pgvector, pulls models, builds both apps
+./scripts/dev.sh            # starts frontend (:3000) + backend (:8000)
+```
+
+Or do both at once: `./scripts/setup.sh --run`  ·  add `--voice` to also download the Kokoro
+neural voice (~340 MB; otherwise voice uses the macOS `say` fallback).
+
+Then open **http://localhost:3000** → **Log in** (the form is pre-filled with a demo account;
+use **Register** to create your own with company + timezone) → **AI Receptionist**.
+
+### What setup.sh does (idempotent — safe to re-run)
+1. Checks/installs Node, Python, PostgreSQL, Ollama.
+2. Creates `.env` from `.env.example` (review it).
+3. Creates the `fieldflow` database + enables `pgvector`.
+4. Pulls the Ollama models: `qwen2.5:3b` (chat), `qwen3.5:9b` (scoring/summaries), `phi3:3.8b`, `nomic-embed-text`.
+5. Frontend: `npm install` + Prisma generate/push/seed.
+6. Backend: Python venv + `pip install`.
+
+## Manual setup (if you prefer)
+
+```bash
+createdb fieldflow && psql -d fieldflow -c "CREATE EXTENSION vector;"
+cp .env.example .env            # set DATABASE_URL + SMTP_* (see below)
+ollama pull qwen2.5:3b && ollama pull qwen3.5:9b && ollama pull phi3:3.8b && ollama pull nomic-embed-text
+
+cd frontend && npm install && npm run setup && npm run dev          # :3000
+cd backend  && python3 -m venv .venv && .venv/bin/pip install -r requirements.txt \
+            && .venv/bin/uvicorn app.main:app --reload --port 8000  # :8000/docs
+```
+
+The repo-root `.env` is shared by both services (frontend reads it via a `frontend/.env` symlink).
+
+## Email (calendar invites)
+
+Bookings email an `.ics` invite when SMTP is configured (otherwise it's download-only). Add to `.env`:
+
+```ini
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=you@gmail.com          # Gmail: create an App Password (needs 2FA)
+SMTP_PASSWORD=your-app-password
+SMTP_FROM=you@gmail.com
+```
+
+## Models (local, low-cost)
+
+| Role | Model | Why |
+|---|---|---|
+| Customer chat | `qwen2.5:3b` | Fast (~3.5s warm), natural, reliable JSON |
+| Lead scoring + summaries | `qwen3.5:9b` | Stronger reasoning (runs in the background) |
+| Embeddings (RAG) | `nomic-embed-text` | 768-dim |
+| Voice | **Kokoro** (local, female) | macOS `say` fallback until the model files are installed |
+
+## Run with Docker (alternative)
+
+```bash
+docker compose up                      # Postgres+pgvector + backend + frontend (auto migrate+seed)
+docker compose --profile ollama up     # also run Ollama in a container (heavy first-run pull)
+```
+
+## Production / cloud notes
+
+- **Hosting the LLM is the only real cost.** A small CPU box runs `qwen2.5:3b` (a bit slower);
+  a budget GPU (AWS Activate credits, RunPod, Lambda, Hetzner) makes chat + voice snappy.
+- **Secrets:** put `JWT_SECRET`, `SMTP_PASSWORD`, `DATABASE_URL` in your host's secrets manager,
+  not a committed file (`.env` is gitignored).
+- **Scaling:** the FastAPI service is stateless (sessions live in Postgres) → run multiple replicas
+  behind a load balancer; point them at one managed Postgres (Supabase/RDS) + one Ollama host
+  (or an Ollama pool). Prisma `public` + FastAPI `techages` schemas keep migrations independent.
+- **Same setup on the server:** `./scripts/setup.sh` works on Debian/Ubuntu (apt) too.
+
+## Docs
+
+`docs/` — `product_roadmap.md`, `research_findings.md`, `codebase_reference.md`.
+`backend/README.md` — service + endpoint reference. `planing/` — strategy + competitive analysis.

@@ -42,9 +42,11 @@ export function SlotPicker({
   const [slots, setSlots] = useState<Slot[]>([]);
   const [loading, setLoading] = useState(true);
   const [email, setEmail] = useState(defaultEmail);
+  // If we already captured an email, show a confirm row instead of a blank ask.
+  const [editingEmail, setEditingEmail] = useState(!defaultEmail);
   const [bookingStart, setBookingStart] = useState<string | null>(null);
   const [error, setError] = useState("");
-  const [done, setDone] = useState<{ label: string; ics: string } | null>(null);
+  const [done, setDone] = useState<{ label: string; ics: string; emailed: boolean } | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -99,7 +101,7 @@ export function SlotPicker({
         setError("Couldn't book that slot. Please try again.");
         return;
       }
-      setDone({ label: data.label, ics: data.ics });
+      setDone({ label: data.label, ics: data.ics, emailed: Boolean(data.emailed) });
       onBooked(data.label, Boolean(data.emailed));
     } catch {
       setError("Couldn't book that slot. Please try again.");
@@ -121,17 +123,17 @@ export function SlotPicker({
 
   if (done) {
     return (
-      <div className="rounded-xl border border-money-200 bg-money-50 p-4">
-        <div className="flex items-center gap-2 text-sm font-semibold text-money-800">
+      <div className="rounded-xl border border-money-200 bg-money-50 p-4 dark:border-money-500/30 dark:bg-money-500/10">
+        <div className="flex items-center gap-2 text-sm font-semibold text-money-800 dark:text-money-300">
           <CalendarCheck className="h-4 w-4" />
           Booked — {done.label}
         </div>
-        <p className="mt-1 text-xs text-money-700">
-          An agent will call you then. Add it to your calendar:
+        <p className="mt-1 text-xs text-money-700 dark:text-money-200/80">
+          {done.emailed ? `Invite emailed to ${email}. ` : ""}An agent will call you then. Add it to your calendar:
         </p>
         <button
           onClick={downloadIcs}
-          className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-money-800 ring-1 ring-money-300 hover:bg-money-100"
+          className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-money-800 ring-1 ring-money-300 hover:bg-money-100 dark:bg-ink-800 dark:text-money-200 dark:ring-money-500/40 dark:hover:bg-ink-700"
         >
           <Download className="h-3.5 w-3.5" /> Add to calendar (.ics)
         </button>
@@ -144,15 +146,17 @@ export function SlotPicker({
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 text-sm font-semibold text-ink-800 dark:text-ink-100">
           <CalendarDays className="h-4 w-4 text-signal-500" />
-          Pick a time for your call
+          Here are some open times — pick one:
         </div>
-        <div className="flex rounded-lg bg-ink-50 p-0.5 text-[11px]">
+        <div className="flex rounded-lg bg-ink-50 p-0.5 text-[11px] dark:bg-ink-800">
           {TZS.map((t) => (
             <button
               key={t.value}
               onClick={() => setTz(t.value)}
               className={`rounded-md px-2 py-1 font-medium transition ${
-                tz === t.value ? "bg-white text-ink-900 shadow-sm" : "text-ink-500"
+                tz === t.value
+                  ? "bg-white text-ink-900 shadow-sm dark:bg-ink-700 dark:text-white"
+                  : "text-ink-500 dark:text-ink-400"
               }`}
             >
               {t.label}
@@ -161,15 +165,26 @@ export function SlotPicker({
         </div>
       </div>
 
-      <input
-        type="email"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        placeholder="your@email.com — for the calendar invite"
-        className="mt-3 w-full rounded-lg border border-ink-200 px-3 py-2 text-sm focus:border-signal-400 focus:outline-none dark:border-ink-700 dark:bg-ink-800 dark:text-ink-100"
-      />
+      {/* Email: confirm the captured one, or ask if we don't have it. */}
+      {email && !editingEmail ? (
+        <p className="mt-3 text-xs text-ink-600 dark:text-ink-300">
+          I&apos;ll send the invite to <span className="font-semibold">{email}</span>{" "}
+          <button onClick={() => setEditingEmail(true)} className="text-signal-600 hover:underline dark:text-signal-400">
+            change
+          </button>
+        </p>
+      ) : (
+        <input
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          onBlur={() => email && setEditingEmail(false)}
+          placeholder="your@email.com — for the calendar invite"
+          className="mt-3 w-full rounded-lg border border-ink-200 px-3 py-2 text-sm focus:border-signal-400 focus:outline-none dark:border-ink-700 dark:bg-ink-800 dark:text-ink-100"
+        />
+      )}
 
-      {error ? <p className="mt-2 text-xs text-danger-600">{error}</p> : null}
+      {error ? <p className="mt-2 text-xs text-danger-600 dark:text-danger-400">{error}</p> : null}
 
       {loading ? (
         <div className="mt-3 flex items-center gap-2 text-xs text-ink-400">

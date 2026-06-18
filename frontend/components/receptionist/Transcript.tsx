@@ -8,16 +8,18 @@ import type { TranscriptTurn } from "./types";
 export function Transcript({
   turns,
   thinking,
+  footer,
 }: {
   turns: TranscriptTurn[];
   thinking: boolean;
+  footer?: React.ReactNode; // inline element rendered after the last turn (e.g. slot picker)
 }) {
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
-  // Auto-scroll to the newest turn.
+  // Auto-scroll to the newest turn / inline element.
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [turns, thinking]);
+  }, [turns, thinking, footer]);
 
   return (
     <div className="flex-1 space-y-4 overflow-y-auto scroll-thin p-5">
@@ -37,6 +39,14 @@ export function Transcript({
           <div className="rounded-2xl rounded-tl-sm bg-ink-100 px-4 py-2.5 text-sm text-ink-500 dark:bg-ink-800 dark:text-ink-300">
             <Loader2 className="h-4 w-4 animate-spin" />
           </div>
+        </div>
+      ) : null}
+
+      {/* Inline scheduler — appears as part of the conversation, left-aligned like Elara. */}
+      {footer ? (
+        <div className="flex items-start gap-2">
+          <Avatar role="assistant" />
+          <div className="min-w-0 max-w-[88%] flex-1">{footer}</div>
         </div>
       ) : null}
 

@@ -7,7 +7,7 @@ extension and our tables exist (idempotent), so there's no separate migration st
 """
 from collections.abc import AsyncGenerator
 
-from sqlalchemy import text
+from sqlalchemy import MetaData, text
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
     async_sessionmaker,
@@ -19,12 +19,16 @@ from .config import get_settings
 
 settings = get_settings()
 
+# This service's tables live in their OWN schema so Prisma (which manages the
+# `public` schema) never tries to drop them. Prisma + FastAPI share one DB safely.
+SCHEMA = "techages"
+
 engine = create_async_engine(settings.async_database_url, future=True, echo=False)
 SessionLocal = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 
 
 class Base(DeclarativeBase):
-    pass
+    metadata = MetaData(schema=SCHEMA)
 
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
@@ -39,22 +43,22 @@ async def init_db() -> None:
 
     async with engine.begin() as conn:
         await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+        await conn.execute(text(f"CREATE SCHEMA IF NOT EXISTS {SCHEMA}"))
         await conn.run_sync(Base.metadata.create_all)
         # Approximate-NN index for KB chunk search (cosine).
         await conn.execute(
             text(
-                "CREATE INDEX IF NOT EXISTS kb_chunk_embedding_idx "
-                "ON kb_chunk USING hnsw (embedding vector_cosine_ops)"
+                f"CREATE INDEX IF NOT EXISTS kb_chunk_embedding_idx "
+                f"ON {SCHEMA}.kb_chunk USING hnsw (embedding vector_cosine_ops)"
             )
         )
-        # Lightweight forward-migrations for columns added to existing tables
-        # (create_all only creates missing tables, it doesn't alter them).
+        # Forward-migrations for columns added to existing tables.
         await conn.execute(
-            text("ALTER TABLE app_user ADD COLUMN IF NOT EXISTS company_name varchar NOT NULL DEFAULT ''")
+            text(f"ALTER TABLE {SCHEMA}.app_user ADD COLUMN IF NOT EXISTS company_name varchar NOT NULL DEFAULT ''")
         )
         await conn.execute(
             text(
-                "ALTER TABLE app_user ADD COLUMN IF NOT EXISTS timezone varchar "
-                "NOT NULL DEFAULT 'America/New_York'"
+                f"ALTER TABLE {SCHEMA}.app_user ADD COLUMN IF NOT EXISTS timezone varchar "
+                f"NOT NULL DEFAULT 'America/New_York'"
             )
         )
