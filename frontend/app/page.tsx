@@ -10,6 +10,7 @@ import {
   CalendarCheck,
   BadgeDollarSign,
 } from "lucide-react";
+import { AuthNav } from "@/components/AuthNav";
 
 const STAGES = [
   { icon: PhoneMissed, label: "Missed call", tone: "text-danger-400", note: "85% → voicemail, no callback" },
@@ -41,13 +42,7 @@ export default function Landing() {
               </div>
             </div>
           </div>
-          <Link
-            href="/dashboard"
-            className="group inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2 text-sm font-semibold text-ink-950 transition hover:bg-paper-200"
-          >
-            Open the dashboard
-            <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-          </Link>
+          <AuthNav />
         </header>
 
         {/* hero */}

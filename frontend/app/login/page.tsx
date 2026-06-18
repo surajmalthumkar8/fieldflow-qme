@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 export default function LoginPage() {
   const router = useRouter();
   const params = useSearchParams();
-  const next = params.get("next") || "/ai-receptionist";
+  const next = params.get("next") || "/receptionist";
 
   const [mode, setMode] = useState<"login" | "register">("login");
   const [email, setEmail] = useState("agent@techages.ai");

@@ -42,7 +42,7 @@ export interface UseSpeech {
   listening: boolean;
   startListening: (onFinal: (transcript: string) => void) => void;
   stopListening: () => void;
-  speak: (text: string) => void;
+  speak: (text: string, onStart?: () => void) => void;
   cancelSpeak: () => void;
 }
 
@@ -67,6 +67,10 @@ export function useSpeech(): UseSpeech {
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const onFinalRef = useRef<((t: string) => void) | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  // Continuous (tap-to-talk) listening state.
+  const keepListeningRef = useRef(false); // user wants to keep listening
+  const bufferRef = useRef(""); // transcript accumulated across auto-restarts
+  const sessionFinalRef = useRef(""); // final text from the current recognition session
 
   const stopAudio = useCallback(() => {
     try {
@@ -93,60 +97,122 @@ export function useSpeech(): UseSpeech {
     };
   }, []);
 
-  const startListening = useCallback((onFinal: (transcript: string) => void) => {
-    const Ctor = getRecognitionCtor();
-    if (!Ctor) return;
-    // Cancel any in-flight TTS so the mic doesn't pick it up.
-    stopAudio();
-    onFinalRef.current = onFinal;
-    const rec = new Ctor();
-    rec.lang = "en-US";
-    rec.interimResults = false;
-    rec.continuous = false;
-    rec.maxAlternatives = 1;
-    rec.onresult = (e) => {
-      const last = e.results[e.results.length - 1];
-      const transcript = last?.[0]?.transcript?.trim();
-      if (transcript) onFinalRef.current?.(transcript);
-    };
-    rec.onend = () => setListening(false);
-    rec.onerror = () => setListening(false);
-    recognitionRef.current = rec;
-    try {
-      rec.start();
-      setListening(true);
-    } catch {
-      setListening(false);
-    }
+  const finalize = useCallback(() => {
+    setListening(false);
+    const transcript = (bufferRef.current + " " + sessionFinalRef.current).trim();
+    bufferRef.current = "";
+    sessionFinalRef.current = "";
+    recognitionRef.current = null;
+    if (transcript) onFinalRef.current?.(transcript);
   }, []);
+
+  // Tap-to-talk: keeps listening through pauses (auto-restarts) until the user
+  // taps stop — so a thinking pause never cuts off / sends a half sentence.
+  const startListening = useCallback(
+    (onFinal: (transcript: string) => void) => {
+      const Ctor = getRecognitionCtor();
+      if (!Ctor) return;
+      stopAudio(); // don't let the mic hear Elara's last reply
+      onFinalRef.current = onFinal;
+      bufferRef.current = "";
+      sessionFinalRef.current = "";
+      keepListeningRef.current = true;
+
+      const begin = () => {
+        const rec = new Ctor();
+        rec.lang = "en-US";
+        rec.interimResults = true;
+        rec.continuous = true;
+        rec.maxAlternatives = 1;
+        rec.onresult = (e) => {
+          let s = "";
+          for (let i = 0; i < e.results.length; i++) {
+            const r = e.results[i];
+            if (r.isFinal && r[0]?.transcript) s += r[0].transcript + " ";
+          }
+          sessionFinalRef.current = s.trim();
+        };
+        rec.onend = () => {
+          // Roll this session's final text into the buffer.
+          if (sessionFinalRef.current) {
+            bufferRef.current = (bufferRef.current + " " + sessionFinalRef.current).trim();
+            sessionFinalRef.current = "";
+          }
+          if (keepListeningRef.current) {
+            try {
+              begin(); // pause/auto-stop — keep listening
+            } catch {
+              finalize();
+            }
+          } else {
+            finalize();
+          }
+        };
+        rec.onerror = (e) => {
+          const err = (e as { error?: string })?.error;
+          if (err === "not-allowed" || err === "service-not-allowed") {
+            keepListeningRef.current = false; // don't restart-loop on permission denial
+          }
+        };
+        recognitionRef.current = rec;
+        rec.start();
+      };
+
+      try {
+        begin();
+        setListening(true);
+      } catch {
+        setListening(false);
+      }
+    },
+    [stopAudio, finalize]
+  );
 
   const stopListening = useCallback(() => {
+    keepListeningRef.current = false;
     try {
-      recognitionRef.current?.stop();
+      recognitionRef.current?.stop(); // triggers onend -> finalize()
     } catch {
-      /* noop */
+      finalize();
     }
-    setListening(false);
-  }, []);
+  }, [finalize]);
 
+  // Speak `text` with the Kokoro neural voice. `onStart` fires the moment audio
+  // actually begins (or immediately if voice is unavailable) so the caller can
+  // reveal the transcript line IN SYNC with the voice instead of well before it.
   const speak = useCallback(
-    async (text: string) => {
-      if (!text.trim()) return;
+    async (text: string, onStart?: () => void) => {
+      if (!text.trim()) {
+        onStart?.();
+        return;
+      }
       stopAudio();
+      let started = false;
+      const fire = () => {
+        if (!started) {
+          started = true;
+          onStart?.();
+        }
+      };
       try {
         const res = await fetch("/api/ai/voice", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ text }),
         });
-        if (!res.ok) return; // no robotic fallback — silence beats the bad voice
+        if (!res.ok) {
+          fire(); // no audio — reveal text now
+          return;
+        }
         const url = URL.createObjectURL(await res.blob());
         const audio = new Audio(url);
         audioRef.current = audio;
+        audio.onplay = fire;
+        audio.onerror = fire;
         audio.onended = () => URL.revokeObjectURL(url);
-        await audio.play().catch(() => {});
+        await audio.play().catch(fire);
       } catch {
-        /* voice unavailable — stay silent */
+        fire();
       }
     },
     [stopAudio]

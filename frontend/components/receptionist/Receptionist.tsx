@@ -4,41 +4,40 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { RotateCcw, Send, Sparkles } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { Badge, Button, Card, CardHeader } from "@/components/ui/primitives";
+import { PERSONA_NAME } from "@/lib/persona";
 import { CallPanel } from "./CallPanel";
 import { Transcript } from "./Transcript";
-import { BookingCard } from "./BookingCard";
 import { useSpeech } from "./useSpeech";
-import type {
-  BookingInfo,
-  CallStatus,
-  Scenario,
-  TranscriptTurn,
-  VoiceApiResponse,
-} from "./types";
+import type { CallStatus, Scenario, TranscriptTurn } from "./types";
 
-const HINT = 'Try: "My AC stopped cooling, can someone come tomorrow at 9am?"';
+const HINT = `Try: "I'm looking to buy a 3-bed home in Austin, around $650k"`;
+
+interface ChatApiResponse {
+  reply: string;
+  qualified?: boolean;
+  sentiment?: string;
+  action?: { type?: string; notes?: string | null };
+  captured?: Record<string, string>;
+  engine?: string;
+}
 
 export function Receptionist({
   businessId,
   businessName,
   tradeLabel,
   serviceArea,
-  engineLive,
   scenarios,
 }: {
   businessId: string;
   businessName: string;
   tradeLabel: string;
   serviceArea?: string;
-  engineLive: boolean;
   scenarios: Scenario[];
 }) {
   const speech = useSpeech();
   const [turns, setTurns] = useState<TranscriptTurn[]>([]);
-  const [conversationId, setConversationId] = useState<string | undefined>();
   const [status, setStatus] = useState<CallStatus>("idle");
-  const [booking, setBooking] = useState<BookingInfo | null>(null);
-  const [engine, setEngine] = useState<"live" | "demo">(engineLive ? "live" : "demo");
+  const [voiceOn, setVoiceOn] = useState(true);
   const [draft, setDraft] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -46,6 +45,8 @@ export function Receptionist({
   // Keep history in a ref so we can read the latest synchronously inside send().
   const historyRef = useRef<TranscriptTurn[]>([]);
   const startedRef = useRef(false);
+  const voiceOnRef = useRef(voiceOn);
+  voiceOnRef.current = voiceOn;
 
   const send = useCallback(
     async (userMessage: string, isStart: boolean) => {
@@ -62,36 +63,46 @@ export function Receptionist({
 
       setStatus("thinking");
       try {
-        const res = await fetch("/api/voice", {
+        const res = await fetch("/api/ai/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             businessId,
-            conversationId,
+            businessName,
+            serviceArea,
             history: isStart ? [] : historyRef.current.slice(0, -1),
-            userMessage: isStart ? "" : trimmed,
+            message: isStart ? "" : trimmed,
           }),
         });
         if (!res.ok) {
           const j = (await res.json().catch(() => ({}))) as { error?: string };
           throw new Error(j.error || `Request failed (${res.status})`);
         }
-        const data = (await res.json()) as VoiceApiResponse;
-        setConversationId(data.conversationId);
-        setEngine(data.engine);
-
+        const data = (await res.json()) as ChatApiResponse;
         const assistantTurn: TranscriptTurn = { role: "assistant", content: data.reply };
-        setTurns((t) => [...t, assistantTurn]);
-        historyRef.current = [...historyRef.current, assistantTurn];
 
-        if (data.booking) setBooking(data.booking);
+        // Reveal the transcript line + commit it to history exactly once.
+        let revealed = false;
+        const reveal = () => {
+          if (revealed) return;
+          revealed = true;
+          setTurns((t) => [...t, assistantTurn]);
+          historyRef.current = [...historyRef.current, assistantTurn];
+        };
 
-        // Speak the reply (no-op if synth unsupported).
-        setStatus("speaking");
-        speech.speak(data.reply);
-        // Return to idle shortly after; speechSynthesis has no reliable end
-        // event across browsers, so we settle the indicator on a short timer.
-        window.setTimeout(() => setStatus("idle"), 600);
+        if (voiceOnRef.current) {
+          // Sync: show the text the moment the voice starts (not seconds before).
+          setStatus("speaking");
+          const safety = window.setTimeout(reveal, 4000); // never strand the text
+          await speech.speak(data.reply, () => {
+            window.clearTimeout(safety);
+            reveal();
+          });
+          setStatus("idle");
+        } else {
+          reveal();
+          setStatus("idle");
+        }
       } catch (e) {
         setError(e instanceof Error ? e.message : "Something went wrong.");
         setStatus("idle");
@@ -99,7 +110,7 @@ export function Receptionist({
         setBusy(false);
       }
     },
-    [busy, businessId, conversationId, speech]
+    [busy, businessId, businessName, serviceArea, speech]
   );
 
   // Auto-start the call on mount: fetch + display (+ speak) the greeting.
@@ -118,8 +129,14 @@ export function Receptionist({
     void send(text, false);
   };
 
-  // Press-to-talk: start STT; on release, the final transcript is sent.
-  const onMicDown = useCallback(() => {
+  // Tap-to-talk toggle: tap to start (keeps listening through pauses), tap again
+  // to stop — then the full transcript is sent. No half-sentences from a pause.
+  const onMicToggle = useCallback(() => {
+    if (speech.listening) {
+      speech.stopListening();
+      setStatus("idle");
+      return;
+    }
     if (busy) return;
     speech.cancelSpeak();
     setStatus("listening");
@@ -128,23 +145,14 @@ export function Receptionist({
     });
   }, [busy, speech, send]);
 
-  const onMicUp = useCallback(() => {
-    speech.stopListening();
-    if (status === "listening") setStatus("idle");
-  }, [speech, status]);
-
   const newCall = useCallback(() => {
     speech.cancelSpeak();
     speech.stopListening();
     historyRef.current = [];
-    startedRef.current = false;
     setTurns([]);
-    setConversationId(undefined);
-    setBooking(null);
     setError(null);
     setStatus("idle");
     setDraft("");
-    // Re-arm the greeting.
     startedRef.current = true;
     void send("", true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -152,16 +160,21 @@ export function Receptionist({
 
   return (
     <div className="space-y-4">
-      {/* Toolbar: engine badge + new call */}
+      {/* Toolbar: engine badge + voice toggle + new call */}
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <Badge tone={engine === "live" ? "money" : "neutral"}>
+        <Badge tone="money">
           <Sparkles className="h-3 w-3" />
-          {engine === "live" ? "Live Claude Haiku" : "Demo brain (no key)"}
+          {PERSONA_NAME} · local AI
         </Badge>
-        <Button variant="secondary" onClick={newCall} disabled={busy}>
-          <RotateCcw className="h-4 w-4" />
-          New call
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="secondary" onClick={() => setVoiceOn((v) => !v)}>
+            {voiceOn ? "🔊 Voice on" : "🔇 Voice off"}
+          </Button>
+          <Button variant="secondary" onClick={newCall} disabled={busy}>
+            <RotateCcw className="h-4 w-4" />
+            New call
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
@@ -174,8 +187,7 @@ export function Receptionist({
             status={status}
             micSupported={speech.recognitionSupported}
             listening={speech.listening}
-            onMicDown={onMicDown}
-            onMicUp={onMicUp}
+            onMicToggle={onMicToggle}
           />
         </div>
 
@@ -184,14 +196,7 @@ export function Receptionist({
           <Card className="flex h-[34rem] flex-col">
             <CardHeader
               title="Live transcript"
-              subtitle="Everything the AI hears and says — persisted to Conversations."
-              action={
-                speech.synthSupported ? null : (
-                  <span className="text-[11px] text-ink-400">
-                    (audio playback off — this browser)
-                  </span>
-                )
-              }
+              subtitle={`Everything you say and ${PERSONA_NAME} says.`}
             />
             <div className="mt-2 flex min-h-0 flex-1 flex-col border-t border-ink-100">
               <Transcript turns={turns} thinking={status === "thinking"} />
@@ -243,12 +248,6 @@ export function Receptionist({
               </div>
             </div>
           </Card>
-
-          {booking ? (
-            <div className="mt-4">
-              <BookingCard booking={booking} />
-            </div>
-          ) : null}
         </div>
       </div>
     </div>

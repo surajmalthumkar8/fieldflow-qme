@@ -8,7 +8,6 @@ const TOKEN_COOKIE = "ff_token";
 // on cookie presence (full validation happens when API routes call the backend).
 const PROTECTED = [
   "/dashboard",
-  "/ai-receptionist",
   "/receptionist",
   "/leads",
   "/reactivation",
@@ -35,7 +34,6 @@ export function middleware(req: NextRequest) {
 export const config = {
   matcher: [
     "/dashboard/:path*",
-    "/ai-receptionist/:path*",
     "/receptionist/:path*",
     "/leads/:path*",
     "/reactivation/:path*",

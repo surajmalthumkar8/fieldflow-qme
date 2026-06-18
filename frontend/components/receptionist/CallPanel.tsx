@@ -1,8 +1,9 @@
 "use client";
 
-import { Loader2, Mic, MicOff, PhoneCall, Volume2 } from "lucide-react";
+import { Mic, MicOff } from "lucide-react";
 import { cn } from "@/lib/cn";
-import { Badge } from "@/components/ui/primitives";
+import { AgentAvatar } from "@/components/AgentAvatar";
+import { PERSONA_NAME } from "@/lib/persona";
 import type { CallStatus } from "./types";
 
 const STATUS_META: Record<
@@ -30,8 +31,7 @@ export function CallPanel({
   status,
   micSupported,
   listening,
-  onMicDown,
-  onMicUp,
+  onMicToggle,
 }: {
   businessName: string;
   tradeLabel: string;
@@ -39,8 +39,7 @@ export function CallPanel({
   status: CallStatus;
   micSupported: boolean;
   listening: boolean;
-  onMicDown: () => void;
-  onMicUp: () => void;
+  onMicToggle: () => void;
 }) {
   const meta = STATUS_META[status];
   const active = status !== "idle";
@@ -58,26 +57,19 @@ export function CallPanel({
         </p>
       </div>
 
-      {/* Animated call orb */}
-      <div className="flex flex-col items-center gap-4 py-6">
+      {/* The AI receptionist's face */}
+      <div className="flex flex-col items-center gap-3 py-4">
         <div
           className={cn(
-            "relative flex h-28 w-28 items-center justify-center rounded-full bg-white/10 ring-2",
+            "rounded-full ring-2 ring-offset-2 ring-offset-ink-900",
             meta.ring,
             active && "animate-pulse-ring"
           )}
         >
-          <div className="flex h-20 w-20 items-center justify-center rounded-full bg-white/15">
-            {status === "thinking" ? (
-              <Loader2 className="h-8 w-8 animate-spin text-warn-300" />
-            ) : status === "speaking" ? (
-              <Volume2 className="h-8 w-8 text-money-300" />
-            ) : (
-              <PhoneCall className="h-8 w-8 text-white" />
-            )}
-          </div>
+          <AgentAvatar speaking={status === "speaking" || status === "listening"} size={116} />
         </div>
-        <span className="inline-flex items-center gap-2 text-sm font-medium text-ink-100">
+        <p className="text-sm font-semibold text-white">{PERSONA_NAME}</p>
+        <span className="inline-flex items-center gap-2 text-xs font-medium text-ink-200">
           <span className={cn("h-2 w-2 rounded-full", meta.dot)} />
           {meta.label}
         </span>
@@ -88,33 +80,23 @@ export function CallPanel({
         {micSupported ? (
           <button
             type="button"
-            onMouseDown={onMicDown}
-            onMouseUp={onMicUp}
-            onMouseLeave={listening ? onMicUp : undefined}
-            onTouchStart={(e) => {
-              e.preventDefault();
-              onMicDown();
-            }}
-            onTouchEnd={(e) => {
-              e.preventDefault();
-              onMicUp();
-            }}
+            onClick={onMicToggle}
             aria-pressed={listening}
-            aria-label="Press and hold to talk"
+            aria-label={listening ? "Tap to stop and send" : "Tap to talk"}
             className={cn(
               "flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-signal-400",
               listening
-                ? "bg-signal-500 text-white"
+                ? "bg-signal-500 text-white animate-pulse"
                 : "bg-white/10 text-white hover:bg-white/20"
             )}
           >
             {listening ? (
               <>
-                <MicOff className="h-4 w-4" /> Release to send
+                <MicOff className="h-4 w-4" /> Listening… tap to send
               </>
             ) : (
               <>
-                <Mic className="h-4 w-4" /> Hold to talk
+                <Mic className="h-4 w-4" /> Tap to talk
               </>
             )}
           </button>
@@ -125,7 +107,7 @@ export function CallPanel({
           </div>
         )}
         <p className="mt-2 text-center text-[11px] text-ink-400">
-          AI discloses itself &amp; recording on the first turn (TCPA / CIPA).
+          Tap once to start, speak (pauses are fine), tap again when you&apos;re done.
         </p>
       </div>
     </div>

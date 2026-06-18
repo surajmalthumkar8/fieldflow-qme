@@ -25,11 +25,11 @@ export const NAV: NavItem[] = [
     description: "Every AI call & text transcript, with outcomes.",
   },
   {
-    href: "/ai-receptionist",
+    href: "/receptionist",
     label: "AI Receptionist",
-    icon: "Sparkles",
+    icon: "PhoneCall",
     group: "Run it",
-    description: "Elara — real local-LLM receptionist with live lead scoring + voice.",
+    description: "Call Elara — the real local-LLM receptionist (voice + chat).",
   },
   {
     href: "/reactivation",
