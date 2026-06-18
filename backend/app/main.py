@@ -9,14 +9,16 @@ Endpoints:
   POST /kb/documents        ingest KB doc (auth)  | GET /kb/documents | POST /kb/search
   GET  /voice/status | POST /voice    female TTS (Kokoro / macOS say)
 """
+import asyncio
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .config import get_settings
-from .db import init_db
+from .core.config import get_settings
+from .core.database import init_db
 from .routers import auth, chat, health, kb, leads, voice
+from .services import llm
 
 settings = get_settings()
 
@@ -24,6 +26,10 @@ settings = get_settings()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await init_db()
+    # Pre-load the conversation + analysis models so the first customer turn is
+    # snappy (no 40s cold-load). Runs in the background; startup isn't blocked.
+    if settings.prewarm:
+        asyncio.create_task(llm.prewarm(["receptionist", "qualifier"]))
     yield
 
 

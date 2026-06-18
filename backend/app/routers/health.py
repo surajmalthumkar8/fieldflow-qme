@@ -1,8 +1,8 @@
 from fastapi import APIRouter
 from sqlalchemy import text
 
-from .. import llm, voice
-from ..db import engine
+from ..services import llm, voice
+from ..core.database import engine
 
 router = APIRouter(tags=["health"])
 

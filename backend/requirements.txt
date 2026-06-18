@@ -17,13 +17,20 @@ python-jose[cryptography]>=3.3
 passlib[bcrypt]>=1.7
 bcrypt>=4.0,<5.0
 
-# Ollama + integrations via plain HTTP (no heavyweight LLM frameworks)
-httpx>=0.27
+# LLM access via LangChain (provider-swappable: Ollama today, OpenAI/Anthropic later)
+langchain-ollama>=1.0
+langchain-core>=1.0
+httpx>=0.27          # health ping only
+pyyaml>=6.0          # editable YAML prompts (app/prompts/*.yaml)
 
 # Tests
 pytest>=8.0
 pytest-asyncio>=0.23
 
-# --- Optional: local female TTS upgrade (Kokoro). Install separately when ready:
+# --- Local female TTS (Kokoro). Install the model files into backend/voices/:
 #   pip install kokoro-onnx soundfile
-# Until then the /voice endpoint falls back to the macOS `say` voice (Samantha).
+#   curl -L -o voices/kokoro-v1.0.onnx <release>/kokoro-v1.0.onnx
+#   curl -L -o voices/voices-v1.0.bin  <release>/voices-v1.0.bin
+# Without them, /voice falls back to the macOS `say` voice.
+kokoro-onnx>=0.4
+soundfile>=0.12

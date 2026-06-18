@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .. import llm, rag
-from ..db import get_db
-from ..prompts import PERSONA_NAME, receptionist_system_prompt
+from ..services import llm, rag
+from ..core.database import get_db
+from ..prompts import loader
 from ..schemas import ChatAction, ChatIn, ChatOut
 
 router = APIRouter(tags=["ai"])
@@ -20,7 +20,7 @@ async def chat(body: ChatIn, db: AsyncSession = Depends(get_db)):
         except Exception:
             context = ""  # KB optional — never block the reply
 
-    system = receptionist_system_prompt(body.business_name, body.service_area, context)
+    system = loader.receptionist_system_prompt(body.business_name, body.service_area, context)
     messages = [{"role": "system", "content": system}]
     for t in body.history:
         role = "assistant" if t.role == "assistant" else "user"
@@ -33,7 +33,7 @@ async def chat(body: ChatIn, db: AsyncSession = Depends(get_db)):
     except Exception:
         # Never let a transient model error break the conversation — degrade gracefully.
         greeting = (
-            f"Hi! I'm {PERSONA_NAME} with {body.business_name}. I'm an AI assistant and can "
+            f"Hi! I'm {loader.persona_name()} with {body.business_name}. I'm an AI assistant and can "
             "connect you to a human anytime. Are you looking to buy, sell, rent, or invest?"
         )
         return ChatOut(
@@ -43,18 +43,32 @@ async def chat(body: ChatIn, db: AsyncSession = Depends(get_db)):
             action=ChatAction(type="none"),
             engine="fallback",
         )
-    action = data.get("action") or {}
+    # Small models vary the JSON shape — be defensive. `action` may come back as a
+    # bare string ("none") or be missing; `captured` may not be a dict.
+    action = data.get("action")
+    if isinstance(action, str):
+        action = {"type": action}
+    elif not isinstance(action, dict):
+        action = {}
     valid_actions = {"schedule", "route_to_agent", "capture_contact", "none"}
     atype = action.get("type") if action.get("type") in valid_actions else "none"
+    notes = action.get("notes")
+    if not isinstance(notes, str):
+        notes = None
+
     sentiment = data.get("sentiment")
     if sentiment not in ("positive", "neutral", "negative"):
         sentiment = "neutral"
+
+    captured = data.get("captured")
+    if not isinstance(captured, dict):
+        captured = {}
 
     return ChatOut(
         reply=str(data.get("reply") or "Sorry, could you say that again?"),
         qualified=bool(data.get("qualified")),
         sentiment=sentiment,
-        action=ChatAction(type=atype, notes=action.get("notes")),
-        captured=data.get("captured") or {},
+        action=ChatAction(type=atype, notes=notes),
+        captured={k: str(v) for k, v in captured.items() if v is not None},
         engine="ollama",
     )

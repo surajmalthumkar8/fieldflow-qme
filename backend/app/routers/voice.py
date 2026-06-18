@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Response
 
-from .. import voice
+from ..services import voice
 from ..schemas import VoiceIn
 
 router = APIRouter(prefix="/voice", tags=["voice"])

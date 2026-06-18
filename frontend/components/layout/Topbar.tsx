@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
-import { Cpu, ChevronDown, Sparkles, Building2 } from "lucide-react";
+import { Cpu, ChevronDown, Sparkles, Building2, LogOut } from "lucide-react";
 
 export interface TopbarBusiness {
   id: string;
@@ -30,6 +30,12 @@ export function Topbar({
       body: JSON.stringify({ businessId }),
     });
     startTransition(() => router.refresh());
+  }
+
+  async function onLogout() {
+    await fetch("/api/auth/logout", { method: "POST" });
+    router.replace("/login");
+    router.refresh();
   }
 
   return (
@@ -64,6 +70,13 @@ export function Topbar({
             <Sparkles className="h-3 w-3" /> Demo brain
           </span>
         )}
+        <button
+          onClick={onLogout}
+          title="Sign out"
+          className="inline-flex items-center gap-1.5 rounded-lg border border-ink-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-ink-600 transition-colors hover:border-ink-300 hover:text-ink-800"
+        >
+          <LogOut className="h-3 w-3" /> Sign out
+        </button>
       </div>
     </header>
   );

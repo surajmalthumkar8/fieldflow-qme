@@ -12,21 +12,26 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Load the repo-root .env (shared with the Next.js app) if present, then a
 # backend-local .env (overrides) if the operator wants service-specific values.
-REPO_ROOT = Path(__file__).resolve().parents[2]
+# app/core/config.py -> parents: [0]=core [1]=app [2]=backend [3]=repo root
+REPO_ROOT = Path(__file__).resolve().parents[3]
+BACKEND_ROOT = Path(__file__).resolve().parents[2]
 load_dotenv(REPO_ROOT / ".env")
-load_dotenv(Path(__file__).resolve().parents[1] / ".env", override=True)
+load_dotenv(BACKEND_ROOT / ".env", override=True)
 
 
 # Which local Ollama model each receptionist role runs on. These are all already
 # pulled locally (see docs/research_findings.md for the rationale).
 ROLE_MODELS = {
-    "receptionist": "qwen3.5:9b",     # natural front-desk conversation
+    # Customer-facing conversation: small + FAST so replies feel instant and human.
+    # Reliable JSON for its size; quality is grounded by the prompt + RAG, not raw size.
+    "receptionist": "qwen2.5:3b",
+    # Background analysis can be heavier/slower (runs after the reply is shown).
     "qualifier": "qwen3.5:9b",        # structured lead scoring (JSON / reasoning)
     "classifier": "phi3:3.8b",        # fast intent / grade booleans
-    "summarizer": "mistral-nemo:12b", # strongest writer: call summaries
+    "summarizer": "qwen3.5:9b",       # faithful structured summaries
     "embedding": "nomic-embed-text",  # 768-dim RAG embeddings
 }
-DEFAULT_MODEL = "qwen3.5:9b"
+DEFAULT_MODEL = "qwen2.5:3b"
 EMBEDDING_DIM = 768  # nomic-embed-text
 
 
@@ -39,6 +44,9 @@ class Settings(BaseSettings):
     # --- Ollama ---
     ollama_host: str = "http://localhost:11434"
     ollama_timeout: float = 300.0  # generous: first call cold-loads a multi-GB model
+    # Keep models resident so we don't pay the ~40s cold-load on every turn.
+    ollama_keep_alive: str = "30m"
+    prewarm: bool = True  # load the receptionist model at startup
 
     # --- Auth / JWT ---
     jwt_secret: str = "dev-insecure-change-me-in-production"

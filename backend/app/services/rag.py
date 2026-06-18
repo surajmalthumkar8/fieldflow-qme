@@ -8,7 +8,7 @@ from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from . import llm
-from .models import KbChunk, KbDocument
+from ..models import KbChunk, KbDocument
 
 CHUNK_SIZE = 800
 CHUNK_OVERLAP = 100

@@ -35,7 +35,7 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 async def init_db() -> None:
     """Ensure pgvector + this service's tables exist. Safe to run repeatedly."""
     # Import models so they register on Base.metadata before create_all.
-    from . import models  # noqa: F401
+    from .. import models  # noqa: F401
 
     async with engine.begin() as conn:
         await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))

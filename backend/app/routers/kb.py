@@ -2,9 +2,9 @@ from fastapi import APIRouter, Depends
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .. import rag
-from ..db import get_db
-from ..deps import current_user
+from ..services import rag
+from ..core.database import get_db
+from ..core.deps import current_user
 from ..models import AppUser, KbDocument
 from ..schemas import KbDocIn, KbDocOut, KbHit, KbSearchIn
 

@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 
-from .. import llm
-from ..prompts import QUALIFY_SYSTEM, SUMMARIZE_SYSTEM
+from ..services import llm
+from ..prompts import loader
 from ..schemas import QualifyIn, QualifyOut, SummarizeOut
 
 router = APIRouter(tags=["ai"])
@@ -10,7 +10,7 @@ router = APIRouter(tags=["ai"])
 def _transcript(history) -> str:
     lines = []
     for t in history:
-        who = "Visitor" if t.role == "user" else "Ava"
+        who = "Visitor" if t.role == "user" else loader.persona_name()
         lines.append(f"{who}: {t.content}")
     return "\n".join(lines)
 
@@ -33,7 +33,7 @@ def _num(v, default=0.0):
 async def qualify(body: QualifyIn):
     """Score a conversation: grade + lead/intent scores + budget + opportunity."""
     messages = [
-        {"role": "system", "content": QUALIFY_SYSTEM},
+        {"role": "system", "content": loader.qualify_system()},
         {"role": "user", "content": "Transcript:\n" + _transcript(body.history)},
     ]
     try:
@@ -54,14 +54,14 @@ async def qualify(body: QualifyIn):
         opportunitySize=_num(data.get("opportunitySize")),
         sentiment=sentiment,
         rationale=str(data.get("rationale", "")),
-        captured=data.get("captured") or {},
+        captured=data.get("captured") if isinstance(data.get("captured"), dict) else {},
     )
 
 
 @router.post("/summarize", response_model=SummarizeOut)
 async def summarize(body: QualifyIn):
     messages = [
-        {"role": "system", "content": SUMMARIZE_SYSTEM},
+        {"role": "system", "content": loader.summarize_system()},
         {"role": "user", "content": "Transcript:\n" + _transcript(body.history)},
     ]
     try:

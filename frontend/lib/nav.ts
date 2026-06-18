@@ -25,11 +25,18 @@ export const NAV: NavItem[] = [
     description: "Every AI call & text transcript, with outcomes.",
   },
   {
+    href: "/ai-receptionist",
+    label: "Ava (Real Estate AI)",
+    icon: "Sparkles",
+    group: "Run it",
+    description: "Real local-LLM receptionist with live lead scoring + voice.",
+  },
+  {
     href: "/receptionist",
-    label: "AI Receptionist",
+    label: "AI Receptionist (demo)",
     icon: "PhoneCall",
     group: "Run it",
-    description: "Live voice demo — talk to the AI and watch it book.",
+    description: "Scripted home-services demo — talk to it and watch it book.",
   },
   {
     href: "/reactivation",

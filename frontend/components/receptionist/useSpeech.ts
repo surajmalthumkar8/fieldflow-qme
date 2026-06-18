@@ -35,7 +35,7 @@ function getRecognitionCtor(): SpeechRecognitionCtor | null {
 }
 
 export interface UseSpeech {
-  /** True if BOTH STT and TTS feature-detect (mic can be shown). */
+  /** True if BOTH STT and TTS are usable (mic can be shown). */
   supported: boolean;
   recognitionSupported: boolean;
   synthSupported: boolean;
@@ -47,6 +47,12 @@ export interface UseSpeech {
 }
 
 /**
+ * TTS now uses the SERVER's Kokoro neural voice (natural US female) via
+ * /api/ai/voice — NOT the browser's robotic speechSynthesis. We keep browser
+ * SpeechRecognition for press-to-talk STT (that part sounds fine).
+ */
+
+/**
  * Progressive-enhancement wrapper over the Web Speech API:
  * - SpeechRecognition for press-to-talk speech-to-text
  * - speechSynthesis for speaking assistant replies aloud
@@ -55,24 +61,34 @@ export interface UseSpeech {
  */
 export function useSpeech(): UseSpeech {
   const [recognitionSupported, setRecognitionSupported] = useState(false);
-  const [synthSupported, setSynthSupported] = useState(false);
+  // TTS is server-side (Kokoro), so it's always "supported" when the app runs.
+  const [synthSupported] = useState(true);
   const [listening, setListening] = useState(false);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const onFinalRef = useRef<((t: string) => void) | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  const stopAudio = useCallback(() => {
+    try {
+      audioRef.current?.pause();
+      audioRef.current = null;
+    } catch {
+      /* noop */
+    }
+  }, []);
 
   useEffect(() => {
     setRecognitionSupported(getRecognitionCtor() !== null);
-    setSynthSupported(
-      typeof window !== "undefined" && "speechSynthesis" in window
-    );
     return () => {
       try {
         recognitionRef.current?.abort();
       } catch {
         /* noop */
       }
-      if (typeof window !== "undefined" && "speechSynthesis" in window) {
-        window.speechSynthesis.cancel();
+      try {
+        audioRef.current?.pause();
+      } catch {
+        /* noop */
       }
     };
   }, []);
@@ -81,9 +97,7 @@ export function useSpeech(): UseSpeech {
     const Ctor = getRecognitionCtor();
     if (!Ctor) return;
     // Cancel any in-flight TTS so the mic doesn't pick it up.
-    if (typeof window !== "undefined" && "speechSynthesis" in window) {
-      window.speechSynthesis.cancel();
-    }
+    stopAudio();
     onFinalRef.current = onFinal;
     const rec = new Ctor();
     rec.lang = "en-US";
@@ -116,24 +130,31 @@ export function useSpeech(): UseSpeech {
   }, []);
 
   const speak = useCallback(
-    (text: string) => {
-      if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+    async (text: string) => {
       if (!text.trim()) return;
-      window.speechSynthesis.cancel();
-      const u = new SpeechSynthesisUtterance(text);
-      u.lang = "en-US";
-      u.rate = 1.02;
-      u.pitch = 1;
-      window.speechSynthesis.speak(u);
+      stopAudio();
+      try {
+        const res = await fetch("/api/ai/voice", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text }),
+        });
+        if (!res.ok) return; // no robotic fallback — silence beats the bad voice
+        const url = URL.createObjectURL(await res.blob());
+        const audio = new Audio(url);
+        audioRef.current = audio;
+        audio.onended = () => URL.revokeObjectURL(url);
+        await audio.play().catch(() => {});
+      } catch {
+        /* voice unavailable — stay silent */
+      }
     },
-    []
+    [stopAudio]
   );
 
   const cancelSpeak = useCallback(() => {
-    if (typeof window !== "undefined" && "speechSynthesis" in window) {
-      window.speechSynthesis.cancel();
-    }
-  }, []);
+    stopAudio();
+  }, [stopAudio]);
 
   return {
     supported: recognitionSupported && synthSupported,

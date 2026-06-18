@@ -10,7 +10,7 @@ import shutil
 import tempfile
 from pathlib import Path
 
-from .config import get_settings
+from ..core.config import get_settings
 
 settings = get_settings()
 
@@ -28,8 +28,9 @@ def _try_load_kokoro():
         from kokoro_onnx import Kokoro  # type: ignore
 
         # Standard Kokoro model file names; present only if the operator downloaded them.
-        model = Path(__file__).resolve().parents[1] / "voices" / "kokoro-v1.0.onnx"
-        voices = Path(__file__).resolve().parents[1] / "voices" / "voices-v1.0.bin"
+        # app/services/voice.py -> parents[2] == backend/ ; voices live in backend/voices/
+        model = Path(__file__).resolve().parents[2] / "voices" / "kokoro-v1.0.onnx"
+        voices = Path(__file__).resolve().parents[2] / "voices" / "voices-v1.0.bin"
         if model.exists() and voices.exists():
             _kokoro = Kokoro(str(model), str(voices))
     except Exception:
