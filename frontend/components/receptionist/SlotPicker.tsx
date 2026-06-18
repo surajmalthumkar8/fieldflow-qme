@@ -140,9 +140,9 @@ export function SlotPicker({
   }
 
   return (
-    <div className="rounded-xl border border-ink-200 bg-white p-4">
+    <div className="rounded-xl border border-ink-200 bg-white p-4 dark:border-ink-700 dark:bg-ink-900">
       <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2 text-sm font-semibold text-ink-800">
+        <div className="flex items-center gap-2 text-sm font-semibold text-ink-800 dark:text-ink-100">
           <CalendarDays className="h-4 w-4 text-signal-500" />
           Pick a time for your call
         </div>
@@ -166,7 +166,7 @@ export function SlotPicker({
         value={email}
         onChange={(e) => setEmail(e.target.value)}
         placeholder="your@email.com — for the calendar invite"
-        className="mt-3 w-full rounded-lg border border-ink-200 px-3 py-2 text-sm focus:border-signal-400 focus:outline-none"
+        className="mt-3 w-full rounded-lg border border-ink-200 px-3 py-2 text-sm focus:border-signal-400 focus:outline-none dark:border-ink-700 dark:bg-ink-800 dark:text-ink-100"
       />
 
       {error ? <p className="mt-2 text-xs text-danger-600">{error}</p> : null}
@@ -184,7 +184,7 @@ export function SlotPicker({
               key={s.start}
               onClick={() => pick(s)}
               disabled={!!bookingStart}
-              className="inline-flex items-center gap-1 rounded-full border border-signal-200 bg-signal-50 px-3 py-1.5 text-xs font-medium text-signal-700 transition hover:bg-signal-100 disabled:opacity-50"
+              className="inline-flex items-center gap-1 rounded-full border border-signal-200 bg-signal-50 px-3 py-1.5 text-xs font-medium text-signal-700 transition hover:bg-signal-100 disabled:opacity-50 dark:border-signal-500/30 dark:bg-signal-500/15 dark:text-signal-300 dark:hover:bg-signal-500/25"
             >
               {bookingStart === s.start ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
               {s.label}

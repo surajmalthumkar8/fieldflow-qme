@@ -34,7 +34,7 @@ export function Transcript({
       {thinking ? (
         <div className="flex items-start gap-2">
           <Avatar role="assistant" />
-          <div className="rounded-2xl rounded-tl-sm bg-ink-100 px-4 py-2.5 text-sm text-ink-500">
+          <div className="rounded-2xl rounded-tl-sm bg-ink-100 px-4 py-2.5 text-sm text-ink-500 dark:bg-ink-800 dark:text-ink-300">
             <Loader2 className="h-4 w-4 animate-spin" />
           </div>
         </div>
@@ -66,7 +66,7 @@ function Bubble({
           "max-w-[80%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed",
           isUser
             ? "rounded-tr-sm bg-signal-600 text-white"
-            : "rounded-tl-sm bg-ink-100 text-ink-800"
+            : "rounded-tl-sm bg-ink-100 text-ink-800 dark:bg-ink-800 dark:text-ink-100"
         )}
       >
         {content}

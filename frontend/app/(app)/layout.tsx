@@ -17,7 +17,7 @@ export default async function AppLayout({
   const activeId = (await getActiveBusinessId()) ?? businesses[0].id;
 
   return (
-    <div className="flex h-screen overflow-hidden bg-paper">
+    <div className="flex h-screen overflow-hidden bg-paper dark:bg-ink-950">
       <Sidebar />
       <div className="flex min-w-0 flex-1 flex-col">
         <Topbar

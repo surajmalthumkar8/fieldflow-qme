@@ -9,6 +9,7 @@ import type { Config } from "tailwindcss";
  * non-generic look. `paper` + `flare` are additive.
  */
 const config: Config = {
+  darkMode: "class",
   content: [
     "./app/**/*.{ts,tsx}",
     "./components/**/*.{ts,tsx}",
