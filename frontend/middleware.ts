@@ -4,25 +4,37 @@ import type { NextRequest } from "next/server";
 const TOKEN_COOKIE = "ff_token";
 const ROLE_COOKIE = "ff_role";
 
-const PROTECTED = [
-  "/dashboard",
-  "/receptionist",
-  "/profile",
-  "/leads",
-  "/reactivation",
-  "/compliance",
-  "/config",
-  "/conversations",
-  "/audit",
-];
+// Routes each role is allowed to see. Anything authenticated-but-not-allowed
+// bounces to that role's home. Data access is still JWT-gated server-side; this
+// is UI routing + privacy separation (admins never land on customer data).
+const ROUTES: Record<string, string[]> = {
+  customer: ["/profile", "/receptionist", "/my-agent", "/my-feedback"],
+  agent: ["/leads", "/scorecard", "/conversations", "/dashboard", "/reactivation", "/compliance", "/config", "/audit"],
+  // Company admin: their overview, performance/revenue, customers/leads, agents,
+  // feedback, cost + billing.
+  admin: ["/admin/overview", "/admin/performance", "/admin/customers", "/admin/agents", "/admin/feedback", "/admin/knowledge", "/admin/cost", "/admin/billing"],
+  // Platform: product analytics + companies + admins + feedback + revenue. NOT
+  // /admin/performance — super_admin must never see a company's pipeline (privacy).
+  super_admin: ["/admin/insights", "/admin/companies", "/admin/admins", "/admin/feedback", "/admin/revenue"],
+};
 
-// Company-only (agent/admin) — customers may NOT see these.
-const COMPANY_ONLY = ["/dashboard", "/leads", "/reactivation", "/compliance", "/config", "/conversations", "/audit"];
+const HOME: Record<string, string> = {
+  customer: "/profile",
+  agent: "/leads",
+  admin: "/admin/overview",
+  super_admin: "/admin/insights",
+};
+
+// Every path the middleware guards (union of all roles' routes).
+const PROTECTED = Array.from(new Set(Object.values(ROUTES).flat()));
+
+function matches(pathname: string, routes: string[]): boolean {
+  return routes.some((p) => pathname === p || pathname.startsWith(`${p}/`));
+}
 
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
-  const needsAuth = PROTECTED.some((p) => pathname === p || pathname.startsWith(`${p}/`));
-  if (!needsAuth) return NextResponse.next();
+  if (!matches(pathname, PROTECTED)) return NextResponse.next();
 
   const token = req.cookies.get(TOKEN_COOKIE)?.value;
   if (!token) {
@@ -32,12 +44,11 @@ export function middleware(req: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // Role-gating (UI routing; data access is still JWT-gated server-side).
-  const role = req.cookies.get(ROLE_COOKIE)?.value;
-  const isCompanyOnly = COMPANY_ONLY.some((p) => pathname === p || pathname.startsWith(`${p}/`));
-  if (role === "customer" && isCompanyOnly) {
+  const role = req.cookies.get(ROLE_COOKIE)?.value || "customer";
+  const allowed = ROUTES[role] ?? ROUTES.customer;
+  if (!matches(pathname, allowed)) {
     const url = req.nextUrl.clone();
-    url.pathname = "/profile";
+    url.pathname = HOME[role] ?? "/profile";
     return NextResponse.redirect(url);
   }
 
@@ -48,12 +59,16 @@ export const config = {
   matcher: [
     "/dashboard/:path*",
     "/receptionist/:path*",
+    "/my-agent/:path*",
+    "/my-feedback/:path*",
     "/profile/:path*",
     "/leads/:path*",
+    "/scorecard/:path*",
     "/reactivation/:path*",
     "/compliance/:path*",
     "/config/:path*",
     "/conversations/:path*",
     "/audit/:path*",
+    "/admin/:path*",
   ],
 };

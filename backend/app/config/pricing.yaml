@@ -1,0 +1,47 @@
+# Techaegis AI — usage pricing. EDIT THIS FILE to retune rates; dashboards + billing
+# read it live (no code change, no restart — re-read on file change). All values are
+# EXAMPLES — local AI means near-zero marginal cost, so headline pricing is cheap.
+version: 1
+default_currency: USD
+
+currencies:
+  USD: { symbol: "$", rounding: 2 }
+  INR: { symbol: "₹", rounding: 2 }
+
+# One plan per company (Business has no plan column yet -> everyone is "starter").
+plans:
+  starter:
+    display_name: "Starter"
+    platform_fee_month: { USD: 49.00, INR: 3999.00 }
+    free_tier:
+      ai_messages: 2000
+      tokens: 2000000
+      voice_minutes: 60
+      rag_mb: 50
+    rates:
+      ai_message:           { USD: 0.004,   INR: 0.30 }   # per AI reply over free tier
+      tokens_per_1k_prompt: { USD: 0.0002,  INR: 0.015 }  # per 1k prompt tokens
+      tokens_per_1k_output: { USD: 0.0006,  INR: 0.05 }   # per 1k output tokens
+      voice_per_minute:     { USD: 0.02,    INR: 1.50 }   # per voice minute
+      rag_per_mb:           { USD: 0.05,    INR: 4.00 }   # per MB ingested/re-embedded
+  growth:
+    display_name: "Growth"
+    platform_fee_month: { USD: 199.00, INR: 15999.00 }
+    free_tier:
+      ai_messages: 20000
+      tokens: 25000000
+      voice_minutes: 600
+      rag_mb: 500
+    rates:
+      ai_message:           { USD: 0.003,   INR: 0.22 }
+      tokens_per_1k_prompt: { USD: 0.00015, INR: 0.012 }
+      tokens_per_1k_output: { USD: 0.0005,  INR: 0.04 }
+      voice_per_minute:     { USD: 0.015,   INR: 1.20 }
+      rag_per_mb:           { USD: 0.04,    INR: 3.20 }
+
+# Shown on the billing page.
+headline:
+  tagline: "Local AI pricing — pennies per conversation."
+  examples:
+    - "~250 AI replies for $1"
+    - "1 MB of company docs trained for ~$0.05"

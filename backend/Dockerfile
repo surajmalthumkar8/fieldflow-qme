@@ -16,7 +16,11 @@ RUN pip install -r requirements.txt
 COPY . .
 
 EXPOSE 8000
-HEALTHCHECK --interval=15s --timeout=5s --start-period=20s --retries=5 \
-    CMD curl -fsS http://localhost:8000/health || exit 1
+# Liveness backstop (process up). Orchestrators should ALSO probe /health/ready for
+# traffic routing — it 503s when the DB is down so the LB drains this instance.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
+    CMD curl -fsS http://localhost:8000/health/live || exit 1
 
+# No --reload in production. Scale horizontally (more replicas behind a load
+# balancer), not more workers per box — the heavy LLM work is on the Ollama tier.
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

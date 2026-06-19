@@ -42,13 +42,15 @@ export function aiServiceEnabled(): boolean {
   return Boolean(BASE);
 }
 
-async function post<T>(path: string, body: unknown, timeoutMs = 120_000): Promise<T> {
+async function post<T>(path: string, body: unknown, timeoutMs = 120_000, token?: string): Promise<T> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (token) headers.Authorization = `Bearer ${token}`;
     const res = await fetch(`${BASE}${path}`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify(body),
       signal: controller.signal,
       cache: "no-store",
@@ -60,20 +62,23 @@ async function post<T>(path: string, body: unknown, timeoutMs = 120_000): Promis
   }
 }
 
-export function aiChat(input: {
-  business_id: string;
-  business_name: string;
-  service_area?: string;
-  history?: AiTurn[];
-  message: string;
-  use_kb?: boolean;
-  conversation_id?: string | null;
-  user_id?: string | null;
-  customer_name?: string;
-  customer_email?: string;
-  customer_profile?: string;
-}): Promise<AiChatResult> {
-  return post<AiChatResult>("/chat", { use_kb: true, history: [], service_area: "", ...input });
+export function aiChat(
+  input: {
+    business_id: string;
+    business_name: string;
+    service_area?: string;
+    history?: AiTurn[];
+    message: string;
+    use_kb?: boolean;
+    conversation_id?: string | null;
+    user_id?: string | null;
+    customer_name?: string;
+    customer_email?: string;
+    customer_profile?: string;
+  },
+  token?: string,
+): Promise<AiChatResult> {
+  return post<AiChatResult>("/chat", { use_kb: true, history: [], service_area: "", ...input }, 120_000, token);
 }
 
 export interface AiConversationSummary {

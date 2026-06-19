@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
 import { prisma } from "@/lib/db";
 import { aiChat, aiServiceEnabled, type AiTurn } from "@/lib/aiService";
 import { getCurrentUser } from "@/lib/authServer";
@@ -62,7 +63,7 @@ export async function POST(req: Request) {
             .map(([k, v]) => `${k}: ${v}`)
             .join(", ")
         : "",
-    });
+    }, (await cookies()).get("ff_token")?.value);
     return NextResponse.json(result);
   } catch (err) {
     console.error("[/api/ai/chat] error:", err);

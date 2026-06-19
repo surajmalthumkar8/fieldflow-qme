@@ -4,25 +4,36 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from ..core.database import get_db
-from ..models import ChatConversation
+from ..core.deps import current_user
+from ..models import AppUser, ChatConversation
 
 router = APIRouter(prefix="/conversations", tags=["conversations"])
 
 
 @router.get("")
 async def list_conversations(
-    business_id: str, user_id: str | None = None, limit: int = 30, db: AsyncSession = Depends(get_db)
+    business_id: str | None = None,
+    limit: int = 30,
+    user: AppUser = Depends(current_user),
+    db: AsyncSession = Depends(get_db),
 ):
-    """Recent conversations (newest first). Scoped to the user when user_id is given."""
+    """Recent conversations (newest first). A customer sees only THEIR OWN; agents/
+    admins see their company; super_admin may pass any business_id. Scope from token."""
     q = (
         select(ChatConversation)
         .options(selectinload(ChatConversation.messages))
-        .where(ChatConversation.business_id == business_id)
         .order_by(ChatConversation.updated_at.desc())
         .limit(limit)
     )
-    if user_id:
-        q = q.where(ChatConversation.user_id == user_id)
+    if user.role == "customer":
+        q = q.where(ChatConversation.user_id == user.id)
+    elif user.role in ("agent", "admin"):
+        if not user.business_id:
+            return []
+        q = q.where(ChatConversation.business_id == user.business_id)
+    else:  # super_admin
+        if business_id:
+            q = q.where(ChatConversation.business_id == business_id)
     rows = (await db.execute(q)).scalars().all()
     out = []
     for c in rows:
@@ -41,8 +52,13 @@ async def list_conversations(
 
 
 @router.get("/{conversation_id}")
-async def get_conversation(conversation_id: str, db: AsyncSession = Depends(get_db)):
-    """Full transcript so the client can reload + resume."""
+async def get_conversation(
+    conversation_id: str,
+    user: AppUser = Depends(current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Full transcript so the client can reload + resume. The owning customer, or an
+    agent/admin in the same company, or super_admin."""
     c = (
         await db.execute(
             select(ChatConversation)
@@ -52,6 +68,13 @@ async def get_conversation(conversation_id: str, db: AsyncSession = Depends(get_
     ).scalar_one_or_none()
     if not c:
         raise HTTPException(404, "Conversation not found")
+    allowed = (
+        user.role == "super_admin"
+        or (user.role == "customer" and c.user_id == user.id)
+        or (user.role in ("agent", "admin") and c.business_id == user.business_id)
+    )
+    if not allowed:
+        raise HTTPException(403, "No access to this conversation")
     return {
         "id": c.id,
         "title": c.title,

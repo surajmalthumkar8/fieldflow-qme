@@ -16,6 +16,10 @@ class Appointment(Base):
 
     id: Mapped[str] = mapped_column(String, primary_key=True, default=new_id)
     business_id: Mapped[str] = mapped_column(String, index=True)
+    # Link the booking back to the chat thread / signed-in customer so the agent's
+    # leads dashboard reflects it reliably (email alone is unreliable for known users).
+    conversation_id: Mapped[str] = mapped_column(String, default="", index=True)
+    user_id: Mapped[str] = mapped_column(String, default="", index=True)
     start_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
     end_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     lead_name: Mapped[str] = mapped_column(String, default="")

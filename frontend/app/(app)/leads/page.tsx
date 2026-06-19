@@ -1,8 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { CalendarCheck, Loader2, UserCheck } from "lucide-react";
+import { CalendarCheck, Loader2, Repeat, UserCheck } from "lucide-react";
 import { PageHeader } from "@/components/ui/primitives";
+import { compactUsd } from "@/lib/format";
 
 interface Lead {
   id: string;
@@ -16,6 +18,18 @@ interface Lead {
   profile: Record<string, string>;
   bookedAt: string | null;
   assignedAgentName: string;
+  reachedOutCount?: number;
+  lastActiveAt?: string | null;
+}
+
+function relTime(iso?: string | null) {
+  if (!iso) return "";
+  const d = new Date(iso).getTime();
+  const mins = Math.round((Date.now() - d) / 60000);
+  if (mins < 60) return `${Math.max(1, mins)}m ago`;
+  const hrs = Math.round(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  return `${Math.round(hrs / 24)}d ago`;
 }
 
 const GRADE: Record<string, string> = {
@@ -25,7 +39,7 @@ const GRADE: Record<string, string> = {
 };
 
 function usd(n: number) {
-  return n ? `$${Math.round(n / 1000)}k` : "—";
+  return n ? compactUsd(n) : "—";
 }
 function wants(l: Lead) {
   const p = l.profile || {};
@@ -89,8 +103,16 @@ export default function AgentLeadsPage() {
               leads.map((l) => (
                 <tr key={l.id} className="align-top hover:bg-paper-50 dark:hover:bg-ink-800/40">
                   <td className="px-4 py-3">
-                    <div className="font-medium text-ink-900 dark:text-ink-100">{l.name}</div>
+                    <Link href={`/leads/${l.id}`} className="font-medium text-ink-900 hover:text-signal-600 dark:text-ink-100 dark:hover:text-signal-400">
+                      {l.name}
+                    </Link>
                     <div className="text-xs text-ink-400">{l.email || "—"}</div>
+                    <div className="mt-0.5 flex items-center gap-2 text-[11px] text-ink-400">
+                      {l.reachedOutCount && l.reachedOutCount > 1 ? (
+                        <span className="inline-flex items-center gap-0.5"><Repeat className="h-3 w-3" /> reached {l.reachedOutCount}×</span>
+                      ) : null}
+                      {l.lastActiveAt ? <span>· {relTime(l.lastActiveAt)}</span> : null}
+                    </div>
                   </td>
                   <td className="max-w-[18rem] px-4 py-3 text-ink-700 dark:text-ink-300">
                     <div>{wants(l)}</div>

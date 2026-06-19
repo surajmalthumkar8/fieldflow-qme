@@ -1,1 +1,1 @@
-"""Techages AI — FastAPI AI/voice microservice package."""
+"""Techaegis AI — FastAPI AI/voice microservice package."""

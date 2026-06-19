@@ -1,6 +1,6 @@
 # FieldFlow / QME Engine — Codebase Reference
 
-_Snapshot taken 2026-06-17, before the Techages AI real-estate re-skin. This is the "as-found" map of the system._
+_Snapshot taken 2026-06-17, before the Techaegis AI real-estate re-skin. This is the "as-found" map of the system._
 
 ## 1. What the app is today
 

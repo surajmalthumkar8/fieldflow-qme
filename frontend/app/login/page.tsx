@@ -27,7 +27,23 @@ export default function LoginPage() {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [businessId, setBusinessId] = useState("");
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
+
+  async function forgotPassword() {
+    setError("");
+    setNotice("");
+    if (!email.trim() || !email.includes("@")) {
+      setError("Enter your email above first, then tap Forgot password.");
+      return;
+    }
+    await fetch("/api/auth/password/forgot", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    }).catch(() => {});
+    setNotice("If that email is registered, a reset link is on its way.");
+  }
 
   // Load companies serving the selected region.
   useEffect(() => {
@@ -58,8 +74,16 @@ export default function LoginPage() {
     if (res.ok) {
       const data = await res.json().catch(() => ({}));
       const role = data?.user?.role;
-      // Customers land on their profile; agents/admins on the company dashboard.
-      const home = role === "customer" ? "/profile" : "/dashboard";
+      // Land each role on its own home.
+      const home =
+        role === "super_admin"
+          ? "/admin/insights"
+          : role === "admin"
+          ? "/admin/overview"
+          : role === "agent"
+          ? "/leads"
+          : "/profile";
+      // Ignore the default `next` (/receptionist) for non-customers.
       const dest = next && next !== "/receptionist" ? next : home;
       router.replace(dest);
       router.refresh();
@@ -83,7 +107,7 @@ export default function LoginPage() {
           <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 text-xl font-bold">
             T
           </div>
-          <h1 className="mt-4 text-2xl font-semibold">Techages AI</h1>
+          <h1 className="mt-4 text-2xl font-semibold">Techaegis AI</h1>
           <p className="text-sm text-slate-400">AI Receptionist — sign in to continue</p>
         </div>
 
@@ -177,7 +201,20 @@ export default function LoginPage() {
             />
           </label>
 
+          {mode === "login" && (
+            <div className="text-right">
+              <button
+                type="button"
+                onClick={forgotPassword}
+                className="text-xs text-indigo-300 hover:text-indigo-200"
+              >
+                Forgot password?
+              </button>
+            </div>
+          )}
+
           {error && <p className="text-sm text-rose-400">{error}</p>}
+          {notice && <p className="text-sm text-emerald-300">{notice}</p>}
 
           <button
             type="submit"

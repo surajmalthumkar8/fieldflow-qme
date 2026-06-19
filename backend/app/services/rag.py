@@ -65,8 +65,18 @@ async def search(db: AsyncSession, business_id: str, query: str, top_k: int = 4)
 
 
 async def context_for(db: AsyncSession, business_id: str, query: str, top_k: int = 4) -> str:
-    """Build a compact context block for grounding the receptionist reply."""
+    """Build a compact context block for grounding the receptionist reply.
+    Skips the (costly) embedding call entirely when the business has no KB docs."""
     if not query.strip():
         return ""
+    from sqlalchemy import func, select as _select
+
+    has_kb = (
+        await db.execute(
+            _select(func.count()).select_from(KbChunk).where(KbChunk.business_id == business_id)
+        )
+    ).scalar() or 0
+    if not has_kb:
+        return ""  # no knowledge base -> don't embed, don't query
     hits = await search(db, business_id, query, top_k)
     return "\n---\n".join(h["content"] for h in hits if h["score"] > 0.2)

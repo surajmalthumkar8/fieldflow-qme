@@ -1,4 +1,4 @@
-"""Central configuration for the Techages AI receptionist service.
+"""Central configuration for the Techaegis AI receptionist service.
 
 One place that knows: which local Ollama model each receptionist role uses, how to
 reach Ollama and Postgres, and the auth/JWT settings. Values come from the
@@ -23,17 +23,28 @@ load_dotenv(BACKEND_ROOT / ".env", override=True)
 # Which local Ollama model each receptionist role runs on. These are all already
 # pulled locally (see docs/research_findings.md for the rationale).
 ROLE_MODELS = {
-    # Customer-facing conversation: small + FAST so replies feel instant and human.
-    # Reliable JSON for its size; quality is grounded by the prompt + RAG, not raw size.
-    "receptionist": "qwen2.5:3b",
-    # Background analysis can be heavier/slower (runs after the reply is shown).
-    "qualifier": "qwen3.5:9b",        # structured lead scoring (JSON / reasoning)
-    "classifier": "phi3:3.8b",        # fast intent / grade booleans
-    "summarizer": "qwen3.5:9b",       # faithful structured summaries
+    # ONE small fast model for everything, so Ollama keeps a single resident model
+    # (a model swap or a context-size change costs a ~40s reload). qwen2.5:1.5b is
+    # ~2x faster than the 3b warm (~2-3s vs ~5-6s) with coherent JSON — the lead
+    # grading that used to need a bigger model is now an instant heuristic, so the
+    # receptionist can use the smaller, snappier model.
+    "receptionist": "qwen2.5:1.5b",  # conversation (hot path — keep it fast)
+    "qualifier": "qwen2.5:1.5b",     # /qualify endpoint (on-demand only)
+    "classifier": "qwen2.5:1.5b",
+    "summarizer": "qwen2.5:1.5b",    # conversation summaries
     "embedding": "nomic-embed-text",  # 768-dim RAG embeddings
 }
-DEFAULT_MODEL = "qwen2.5:3b"
+DEFAULT_MODEL = "qwen2.5:1.5b"
 EMBEDDING_DIM = 768  # nomic-embed-text
+
+# Two model TIERS, by job:
+#  - FAST  → the customer-facing receptionist (and quick classifies). Protect this
+#            experience: keep it small + snappy, never let it wait behind heavy work.
+#  - REASONING → back-office analysis the customer never waits on (feedback summary,
+#            agent insights, qualification). May be a heavier "thinking" model.
+# model_for() maps roles to a tier; the actual model names come from Settings so you
+# can swap a thinking model in via env without code changes.
+_REASONING_ROLES = {"summarizer", "qualifier", "insight"}
 
 
 class Settings(BaseSettings):
@@ -48,6 +59,15 @@ class Settings(BaseSettings):
     # Keep models resident so we don't pay the ~40s cold-load on every turn.
     ollama_keep_alive: str = "30m"
     prewarm: bool = True  # load the receptionist model at startup
+
+    # --- Model tiers (see _REASONING_ROLES above) ---
+    # Default both to the same fast model so a single Ollama instance never has to
+    # swap/evict (a swap would slow the very next customer chat). In PRODUCTION set
+    # reasoning_model to a thinking model AND reasoning_host to a SEPARATE Ollama
+    # instance (its own GPU box) so the two tiers never contend for the one slot.
+    fast_model: str = DEFAULT_MODEL
+    reasoning_model: str = DEFAULT_MODEL
+    reasoning_host: str = ""  # blank → use ollama_host; set to a 2nd Ollama in prod
 
     # --- Auth / JWT ---
     jwt_secret: str = "dev-insecure-change-me-in-production"
@@ -76,6 +96,10 @@ class Settings(BaseSettings):
     smtp_user: str = Field("", validation_alias=AliasChoices("smtp_user", "smtp_username"))
     smtp_password: str = ""
     smtp_from: str = ""  # defaults to smtp_user
+
+    # --- Public app URL (for links in outbound email, e.g. password-set links) ---
+    app_url: str = "http://localhost:3000"
+    reset_token_hours: int = 48  # how long an invite / password-reset link is valid
 
     # --- CORS (Next.js dev) ---
     cors_origins: str = "http://localhost:3000,http://127.0.0.1:3000"
@@ -109,4 +133,19 @@ def get_settings() -> Settings:
 
 
 def model_for(role: str) -> str:
-    return ROLE_MODELS.get(role, DEFAULT_MODEL)
+    """Map a role to its model via the tier config (env-overridable)."""
+    s = get_settings()
+    if role == "embedding":
+        return "nomic-embed-text"
+    if role in _REASONING_ROLES:
+        return s.reasoning_model
+    return s.fast_model  # receptionist, classifier, anything else → fast
+
+
+def host_for(role: str) -> str:
+    """Which Ollama instance serves a role. Reasoning roles can run on a separate
+    instance (reasoning_host) so heavy analysis never blocks the customer model."""
+    s = get_settings()
+    if role in _REASONING_ROLES and s.reasoning_host:
+        return s.reasoning_host
+    return s.ollama_host

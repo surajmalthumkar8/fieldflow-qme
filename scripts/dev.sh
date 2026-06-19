@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Run the full Techages AI stack locally: Next.js (UI + CRUD) + FastAPI (AI/voice).
+# Run the full Techaegis AI stack locally: Next.js (UI + CRUD) + FastAPI (AI/voice).
 # Requires: Postgres (fieldflow DB + pgvector), Ollama running with the models pulled.
 set -euo pipefail
 

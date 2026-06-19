@@ -1,4 +1,4 @@
-# Techages AI — Research Findings
+# Techaegis AI — Research Findings
 
 _Market + technology research for the real-estate AI receptionist. Benchmarked against RevSquared AI. Last updated 2026-06-17._
 

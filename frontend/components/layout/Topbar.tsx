@@ -1,8 +1,10 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { Cpu, Sparkles, Building2, LogOut } from "lucide-react";
+import { Building2, LogOut } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { EngineStatus } from "@/components/layout/EngineStatus";
+import { NotificationBell } from "@/components/layout/NotificationBell";
 
 export interface TopbarBusiness {
   id: string;
@@ -13,11 +15,13 @@ export interface TopbarBusiness {
 export function Topbar({
   businesses,
   activeId,
-  brainLive,
+  role = "customer",
+  companyName = "",
 }: {
   businesses: TopbarBusiness[];
   activeId: string;
-  brainLive: boolean;
+  role?: string;
+  companyName?: string;
 }) {
   const router = useRouter();
 
@@ -27,26 +31,27 @@ export function Topbar({
     router.refresh();
   }
 
+  // The super_admin is the platform — they aren't "inside" any single company, so
+  // show the platform label instead of an (arbitrary) client's name. Everyone else
+  // sees their own company.
+  const label =
+    role === "super_admin"
+      ? "Techaegis AI · Platform"
+      : companyName || businesses.find((b) => b.id === activeId)?.name || "—";
+
   return (
     <header className="flex h-16 shrink-0 items-center justify-between gap-4 border-b border-ink-200/70 bg-paper/80 px-4 backdrop-blur-md dark:border-ink-800 dark:bg-ink-950/80 lg:px-8">
       <div className="flex items-center gap-2.5">
         <Building2 className="h-4 w-4 text-ink-400" />
         <span className="text-[13px] font-semibold text-ink-800 dark:text-ink-100">
-          {businesses.find((b) => b.id === activeId)?.name ?? "—"}
+          {label}
         </span>
       </div>
 
       <div className="flex items-center gap-2">
+        <NotificationBell role={role} />
         <ThemeToggle />
-        {brainLive ? (
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-money-50 px-2.5 py-1 text-[11px] font-semibold text-money-700 ring-1 ring-inset ring-money-400/40">
-            <Cpu className="h-3 w-3" /> Live Claude Haiku
-          </span>
-        ) : (
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-signal-50 px-2.5 py-1 text-[11px] font-semibold text-signal-700 ring-1 ring-inset ring-signal-200">
-            <Sparkles className="h-3 w-3" /> Demo brain
-          </span>
-        )}
+        <EngineStatus />
         <button
           onClick={onLogout}
           title="Sign out"

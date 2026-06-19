@@ -3,7 +3,7 @@
 # Exercises auth, chat, qualify, summarize, KB ingest/search, and voice end-to-end.
 set -uo pipefail
 BASE="${1:-http://localhost:8000}"
-EMAIL="smoke+$$@techages.ai"
+EMAIL="smoke+$$@techaegis.ai"
 PASS="smoketest12345"
 PY="$(dirname "$0")/.venv/bin/python"
 

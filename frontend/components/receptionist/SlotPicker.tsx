@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { CalendarCheck, CalendarDays, Download, Loader2 } from "lucide-react";
+import { CalendarCheck, CalendarDays, Download, Loader2, Video } from "lucide-react";
 
 interface Slot {
   start: string;
@@ -30,6 +30,8 @@ export function SlotPicker({
   defaultEmail = "",
   defaultPhone = "",
   defaultTz: tzProp = "",
+  after = "",
+  conversationId = "",
   onBooked,
 }: {
   businessId: string;
@@ -38,6 +40,8 @@ export function SlotPicker({
   defaultEmail?: string;
   defaultPhone?: string;
   defaultTz?: string;
+  after?: string; // ISO date the visitor asked to start from ("next week" / "the 23rd")
+  conversationId?: string; // links the booking to this chat thread (for the leads view)
   onBooked: (label: string, emailed: boolean) => void;
 }) {
   // Default to the customer's account timezone, else guess from the browser.
@@ -51,16 +55,15 @@ export function SlotPicker({
   const [editingEmail, setEditingEmail] = useState(!defaultEmail);
   const [bookingStart, setBookingStart] = useState<string | null>(null);
   const [error, setError] = useState("");
-  const [done, setDone] = useState<{ label: string; ics: string; emailed: boolean } | null>(null);
+  const [done, setDone] = useState<{ label: string; ics: string; emailed: boolean; meetingUrl?: string; gcalUrl?: string } | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
-      const r = await fetch(
-        `/api/ai/availability?business_id=${encodeURIComponent(businessId)}&tz=${encodeURIComponent(tz)}`,
-        { cache: "no-store" }
-      );
+      const qs = new URLSearchParams({ business_id: businessId, tz });
+      if (after) qs.set("after", after);
+      const r = await fetch(`/api/ai/availability?${qs.toString()}`, { cache: "no-store" });
       const data = await r.json();
       setSlots(Array.isArray(data.slots) ? data.slots : []);
     } catch {
@@ -68,7 +71,7 @@ export function SlotPicker({
     } finally {
       setLoading(false);
     }
-  }, [businessId, tz]);
+  }, [businessId, tz, after]);
 
   useEffect(() => {
     void load();
@@ -94,6 +97,7 @@ export function SlotPicker({
           name: defaultName,
           email: email.trim(),
           phone: defaultPhone,
+          conversation_id: conversationId,
         }),
       });
       const data = await r.json();
@@ -106,7 +110,7 @@ export function SlotPicker({
         setError("Couldn't book that slot. Please try again.");
         return;
       }
-      setDone({ label: data.label, ics: data.ics, emailed: Boolean(data.emailed) });
+      setDone({ label: data.label, ics: data.ics, emailed: Boolean(data.emailed), meetingUrl: data.meeting_url, gcalUrl: data.gcal_url });
       onBooked(data.label, Boolean(data.emailed));
     } catch {
       setError("Couldn't book that slot. Please try again.");
@@ -134,14 +138,36 @@ export function SlotPicker({
           Booked — {done.label}
         </div>
         <p className="mt-1 text-xs text-money-700 dark:text-money-200/80">
-          {done.emailed ? `Invite emailed to ${email}. ` : ""}An agent will call you then. Add it to your calendar:
+          {done.emailed ? `Invite emailed to ${email}. ` : ""}It's a video call — join with the link below.
         </p>
-        <button
-          onClick={downloadIcs}
-          className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-money-800 ring-1 ring-money-300 hover:bg-money-100 dark:bg-ink-800 dark:text-money-200 dark:ring-money-500/40 dark:hover:bg-ink-700"
-        >
-          <Download className="h-3.5 w-3.5" /> Add to calendar (.ics)
-        </button>
+        <div className="mt-2 flex flex-wrap gap-2">
+          {done.meetingUrl ? (
+            <a
+              href={done.meetingUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-signal-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-signal-700"
+            >
+              <Video className="h-3.5 w-3.5" /> Join video call
+            </a>
+          ) : null}
+          {done.gcalUrl ? (
+            <a
+              href={done.gcalUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-ink-700 ring-1 ring-ink-300 hover:bg-ink-50 dark:bg-ink-800 dark:text-ink-200 dark:ring-ink-600 dark:hover:bg-ink-700"
+            >
+              <CalendarDays className="h-3.5 w-3.5" /> Add to Google Calendar
+            </a>
+          ) : null}
+          <button
+            onClick={downloadIcs}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-money-800 ring-1 ring-money-300 hover:bg-money-100 dark:bg-ink-800 dark:text-money-200 dark:ring-money-500/40 dark:hover:bg-ink-700"
+          >
+            <Download className="h-3.5 w-3.5" /> .ics
+          </button>
+        </div>
       </div>
     );
   }

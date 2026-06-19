@@ -1,4 +1,4 @@
-# Techages AI — FastAPI AI/Voice Microservice
+# Techaegis AI — FastAPI AI/Voice Microservice
 
 The Python service that powers the real-estate AI receptionist: local-LLM chat,
 lead qualification/scoring, conversation summaries, a per-business RAG knowledge

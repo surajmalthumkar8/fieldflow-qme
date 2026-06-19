@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────────────────────
-# Techages AI / FieldFlow — one-command setup.
+# Techaegis AI / FieldFlow — one-command setup.
 # Idempotent: safe to re-run. Works on macOS (brew) and Debian/Ubuntu (apt).
 #
 #   ./scripts/setup.sh            # full setup (deps, DB, models, builds)
@@ -23,8 +23,10 @@ for arg in "$@"; do
   esac
 done
 
-# Required Ollama models (current build).
-MODELS=("qwen2.5:3b" "qwen3.5:9b" "phi3:3.8b" "nomic-embed-text")
+# Required Ollama models (current build). Just two, ~1.3GB total: one small fast
+# chat model (lead grading is a heuristic now, so no big model is needed) and the
+# embedding model for RAG.
+MODELS=("qwen2.5:1.5b" "nomic-embed-text")
 DB_NAME="fieldflow"
 
 bold(){ printf "\n\033[1m▶ %s\033[0m\n" "$*"; }

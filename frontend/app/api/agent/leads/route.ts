@@ -1,17 +1,20 @@
 import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
 import { getCurrentUser } from "@/lib/authServer";
 
 export const dynamic = "force-dynamic";
 const BACKEND = process.env.AI_SERVICE_URL?.replace(/\/$/, "") ?? "";
 
-// The agent's company leads (auto-scored). Agents/admins only.
+// The agent's company leads (auto-scored). Agents/admins only. The backend scopes
+// to the caller's company from the JWT — we just forward the token.
 export async function GET() {
   const user = await getCurrentUser();
   if (!BACKEND || !user || user.role === "customer") {
     return NextResponse.json([], { status: user?.role === "customer" ? 403 : 401 });
   }
-  if (!user.business_id) return NextResponse.json([]);
-  const r = await fetch(`${BACKEND}/agent/leads?business_id=${encodeURIComponent(user.business_id)}`, {
+  const token = (await cookies()).get("ff_token")?.value;
+  const r = await fetch(`${BACKEND}/agent/leads`, {
+    headers: { Authorization: `Bearer ${token}` },
     cache: "no-store",
   });
   return NextResponse.json(r.ok ? await r.json() : []);

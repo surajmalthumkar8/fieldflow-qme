@@ -1,4 +1,4 @@
-# Techages AI — full stack in one command:  docker compose up
+# Techaegis AI — full stack in one command:  docker compose up
 #
 # Brings up: Postgres+pgvector, the FastAPI AI/voice service, and the Next.js app
 # (with a one-shot migrate+seed). By default the AI service talks to OLLAMA on the
@@ -9,6 +9,7 @@
 services:
   db:
     image: pgvector/pgvector:pg16
+    restart: unless-stopped
     environment:
       POSTGRES_USER: fieldflow
       POSTGRES_PASSWORD: fieldflow
@@ -36,43 +37,66 @@ services:
 
   backend:
     build: ./backend
+    restart: unless-stopped   # auto-restart on crash / OOM
     environment:
       DATABASE_URL: postgresql://fieldflow:fieldflow@db:5432/fieldflow
       OLLAMA_HOST: http://host.docker.internal:11434
       JWT_SECRET: change-me-in-production
       CORS_ORIGINS: http://localhost:3000
+      APP_URL: http://localhost:3000   # for password-set links in email
       TTS_PROVIDER: auto   # 'say' is macOS-only; in-container voice needs Kokoro files
     ports:
       - "8000:8000"
     extra_hosts:
       - "host.docker.internal:host-gateway"   # reach host Ollama on Linux
+    # Readiness gate: 503s when the DB is down so dependents wait / LB drains it.
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8000/health/ready"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
     depends_on:
       db:
         condition: service_healthy
 
   frontend:
     build: ./frontend
+    restart: unless-stopped
     environment:
       DATABASE_URL: postgresql://fieldflow:fieldflow@db:5432/fieldflow?schema=public
       AI_SERVICE_URL: http://backend:8000
       NODE_ENV: production
     ports:
       - "3000:3000"
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/login',r=>process.exit(r.statusCode<500?0:1)).on('error',()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
     depends_on:
       migrate:
         condition: service_completed_successfully
       backend:
-        condition: service_started
+        condition: service_healthy   # wait until the API is actually ready
 
   # Optional: run Ollama in a container (heavy first-run model download).
   # Enable with:  docker compose --profile ollama up
   ollama:
     image: ollama/ollama:latest
     profiles: ["ollama"]
+    restart: unless-stopped
     ports:
       - "11434:11434"
     volumes:
       - ollama:/root/.ollama
+    healthcheck:
+      test: ["CMD-SHELL", "ollama list || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
 
 volumes:
   pgdata:

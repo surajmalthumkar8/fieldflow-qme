@@ -1,5 +1,5 @@
 """Persisted receptionist conversations so a visitor/agent can reload and resume.
-Lives in the `techages` schema (no FK to Prisma's Business — business_id is a string)."""
+Lives in the `techaegis` schema (no FK to Prisma's Business — business_id is a string)."""
 from datetime import datetime
 
 from sqlalchemy import DateTime, Float, ForeignKey, Integer, String, Text, func
@@ -27,6 +27,9 @@ class ChatConversation(Base):
     rationale: Mapped[str] = mapped_column(String, default="")
     assigned_agent_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
     assigned_agent_name: Mapped[str] = mapped_column(String, default="")
+    assigned_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)  # for time-to-assign SLA
+    insight_json: Mapped[str] = mapped_column(Text, default="")  # cached agent AI insight
+    insight_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()

@@ -3,7 +3,6 @@ import { Sidebar } from "@/components/layout/Sidebar";
 import { Topbar } from "@/components/layout/Topbar";
 import { getActiveBusinessId, listBusinesses } from "@/lib/session";
 import { getCurrentUser } from "@/lib/authServer";
-import { brainIsLive } from "@/lib/ai/brain";
 import type { Role } from "@/lib/nav";
 
 export default async function AppLayout({
@@ -26,7 +25,8 @@ export default async function AppLayout({
         <Topbar
           businesses={businesses.map((b) => ({ id: b.id, name: b.name, trade: b.trade }))}
           activeId={activeId}
-          brainLive={brainIsLive()}
+          role={role}
+          companyName={user?.company_name ?? ""}
         />
         <main className="flex-1 overflow-y-auto scroll-thin">
           <div className="mx-auto max-w-7xl animate-fade-in px-4 py-8 lg:px-8">{children}</div>

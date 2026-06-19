@@ -33,6 +33,22 @@ class AppUser(Base):
     )
 
 
+class PasswordReset(Base):
+    """A one-time token to set/reset a password. Issued when a super_admin invites
+    an admin, or when anyone uses 'forgot password'. Emailed as a link, single-use."""
+    __tablename__ = "password_reset"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=new_id)
+    user_id: Mapped[str] = mapped_column(
+        ForeignKey(f"{SCHEMA}.app_user.id", ondelete="CASCADE"), index=True
+    )
+    token: Mapped[str] = mapped_column(String, unique=True, index=True)
+    purpose: Mapped[str] = mapped_column(String, default="invite")  # invite | reset
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
 class AppSession(Base):
     """A persisted login session (jti tracking + revocation)."""
     __tablename__ = "app_session"

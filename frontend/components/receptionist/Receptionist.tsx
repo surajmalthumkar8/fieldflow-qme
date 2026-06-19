@@ -8,6 +8,7 @@ import { PERSONA_NAME } from "@/lib/persona";
 import { CallPanel } from "./CallPanel";
 import { Transcript } from "./Transcript";
 import { SlotPicker } from "./SlotPicker";
+import { FeedbackPrompt } from "./FeedbackPrompt";
 import { useSpeech } from "./useSpeech";
 import type { CallStatus, Scenario, TranscriptTurn } from "./types";
 
@@ -17,7 +18,7 @@ interface ChatApiResponse {
   reply: string;
   qualified?: boolean;
   sentiment?: string;
-  action?: { type?: string; notes?: string | null };
+  action?: { type?: string; notes?: string | null; after?: string | null };
   captured?: Record<string, string>;
   engine?: string;
   conversation_id?: string | null;
@@ -52,6 +53,11 @@ export function Receptionist({
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [showScheduler, setShowScheduler] = useState(false);
+  // The date the visitor asked to start from ("next week" / "the 23rd"); ISO from
+  // the backend, else the raw request text (the availability endpoint parses it).
+  const [schedulerAfter, setSchedulerAfter] = useState("");
+  // After a successful booking, ask for a quick rating (feeds the feedback views).
+  const [bookedConversationId, setBookedConversationId] = useState<string | null>(null);
   const [captured, setCaptured] = useState<Record<string, string>>({});
   const [historyOpen, setHistoryOpen] = useState(false);
   const [history, setHistory] = useState<
@@ -70,7 +76,10 @@ export function Receptionist({
       if (busy) return;
       setBusy(true);
       setError(null);
-      if (!isStart) setShowScheduler(false); // clear any prior inline scheduler
+      if (!isStart) {
+        setShowScheduler(false); // clear any prior inline scheduler
+        setBookedConversationId(null); // and the post-booking feedback prompt
+      }
       const trimmed = userMessage.trim();
 
       if (!isStart && trimmed) {
@@ -111,7 +120,12 @@ export function Receptionist({
         const askedToSchedule =
           /\b(schedul\w*|book|set\s?up|arrange)\b/i.test(trimmed) &&
           /\b(call|meeting|appointment|agent|visit|time|slot)\b/i.test(trimmed);
-        if (data.action?.type === "schedule" || askedToSchedule) setShowScheduler(true);
+        if (data.action?.type === "schedule" || askedToSchedule) {
+          // Prefer the backend's parsed ISO date; else hand the raw request to the
+          // availability endpoint, which parses "next week"/"the 23rd" itself.
+          setSchedulerAfter(data.action?.after || (askedToSchedule ? trimmed : ""));
+          setShowScheduler(true);
+        }
 
         // Reveal the transcript line + commit it to history exactly once.
         let revealed = false;
@@ -330,28 +344,38 @@ export function Receptionist({
                 turns={turns}
                 thinking={status === "thinking"}
                 footer={
-                  showScheduler ? (
-                    <SlotPicker
-                      businessId={businessId}
-                      businessName={businessName}
-                      defaultName={captured.name || customerName}
-                      defaultEmail={captured.email || customerEmail}
-                      defaultPhone={captured.phone || ""}
-                      defaultTz={customerTimezone}
-                      onBooked={(label, emailed) => {
-                        // Keep the picker in its booked state (download stays); it
-                        // clears when the visitor sends their next message.
-                        const confirm: TranscriptTurn = {
-                          role: "assistant",
-                          content: emailed
-                            ? `You're all set for ${label} — I've emailed the calendar invite. An agent will call you then.`
-                            : `You're all set for ${label}. An agent will call you then — you can add it to your calendar from the invite above.`,
-                        };
-                        setTurns((t) => [...t, confirm]);
-                        historyRef.current = [...historyRef.current, confirm];
-                        if (voiceOnRef.current) void speech.speak(confirm.content);
-                      }}
-                    />
+                  showScheduler || bookedConversationId ? (
+                    <>
+                      {showScheduler ? (
+                        <SlotPicker
+                          businessId={businessId}
+                          businessName={businessName}
+                          defaultName={captured.name || customerName}
+                          defaultEmail={captured.email || customerEmail}
+                          defaultPhone={captured.phone || ""}
+                          defaultTz={customerTimezone}
+                          after={schedulerAfter}
+                          conversationId={conversationIdRef.current || ""}
+                          onBooked={(label, emailed) => {
+                            // Keep the picker in its booked state (download stays); it
+                            // clears when the visitor sends their next message.
+                            const confirm: TranscriptTurn = {
+                              role: "assistant",
+                              content: emailed
+                                ? `You're all set for ${label} — I've emailed the calendar invite. An agent will call you then.`
+                                : `You're all set for ${label}. An agent will call you then — you can add it to your calendar from the invite above.`,
+                            };
+                            setTurns((t) => [...t, confirm]);
+                            historyRef.current = [...historyRef.current, confirm];
+                            if (voiceOnRef.current) void speech.speak(confirm.content);
+                            setBookedConversationId(conversationIdRef.current || "booked");
+                          }}
+                        />
+                      ) : null}
+                      {bookedConversationId ? (
+                        <FeedbackPrompt businessId={businessId} conversationId={conversationIdRef.current || ""} />
+                      ) : null}
+                    </>
                   ) : null
                 }
               />

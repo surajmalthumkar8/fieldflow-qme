@@ -10,12 +10,45 @@ class RegisterIn(BaseModel):
     company_name: str = ""
     timezone: str = "America/New_York"
     business_id: str | None = None
-    role: str = "agent"
+    role: str = "customer"  # public register is customer-only; privileged roles via invite
 
 
 class LoginIn(BaseModel):
     email: EmailStr
     password: str
+
+
+class InviteIn(BaseModel):
+    """Invite a teammate (admin or agent): no password — a set-password link is emailed.
+    business_id is required only for super_admin (admins are scoped to their own company)."""
+    email: EmailStr
+    full_name: str = ""
+    business_id: str = ""
+    company_name: str = ""
+    timezone: str = "America/New_York"
+    role: str = "admin"
+
+
+class FeedbackIn(BaseModel):
+    business_id: str = ""  # derived from the auth token server-side
+    conversation_id: str = ""
+    user_id: str = ""
+    appointment_id: str = ""
+    rating: int = 0  # 1-5
+    comment: str = ""
+    category: str = "other"
+    source: str = "post_booking"
+    target: str = "overall"  # ai | agent | overall
+    agent_id: str = ""        # set when target='agent'
+
+
+class ForgotIn(BaseModel):
+    email: EmailStr
+
+
+class ResetIn(BaseModel):
+    token: str
+    password: str = Field(min_length=8)
 
 
 class TokenOut(BaseModel):
@@ -60,6 +93,9 @@ class ChatIn(BaseModel):
 class ChatAction(BaseModel):
     type: str = "none"
     notes: str | None = None
+    # For a "schedule" action: the date (YYYY-MM-DD) the visitor asked to start from,
+    # parsed deterministically from their message ("next week" / "on the 23rd").
+    after: str | None = None
 
 
 class ChatOut(BaseModel):

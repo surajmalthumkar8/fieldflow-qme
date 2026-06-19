@@ -1,6 +1,6 @@
-# Techages AI — AI Receptionist Product Roadmap
+# Techaegis AI — AI Receptionist Product Roadmap
 
-_Owner: Techages AI · Target market: US real-estate (agencies, brokers, realtors, investment firms) · Benchmark: revsquared.ai · Last updated: 2026-06-17_
+_Owner: Techaegis AI · Target market: US real-estate (agencies, brokers, realtors, investment firms) · Benchmark: revsquared.ai · Last updated: 2026-06-17_
 
 ---
 

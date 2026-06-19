@@ -1,4 +1,4 @@
-# Techages AI — AI Receptionist (FieldFlow / QME engine)
+# Techaegis AI — AI Receptionist (FieldFlow / QME engine)
 
 A **local-first AI receptionist** for **US real-estate** businesses (agencies, brokers, realtors,
 investors). A website visitor can **chat or talk** to **Elara**, the AI receptionist — she answers
@@ -26,12 +26,12 @@ frontend/   Next.js 15 (UI + CRUD API routes, Prisma)        → :3000
 backend/    FastAPI service (LangChain→Ollama, JWT, RAG,      → :8000
             Kokoro voice, scheduling+email)
             ├─ Postgres `public` schema  (Prisma: app data)
-            └─ Postgres `techages` schema (FastAPI: auth, KB, appointments)
+            └─ Postgres `techaegis` schema (FastAPI: auth, KB, appointments)
 PostgreSQL + pgvector · Ollama (local LLMs) · Kokoro (local TTS)
 ```
 
 The two services share one Postgres DB safely via **separate schemas** (Prisma → `public`,
-FastAPI → `techages`), so neither tool's migrations touch the other's tables.
+FastAPI → `techaegis`), so neither tool's migrations touch the other's tables.
 
 ---
 
@@ -114,7 +114,7 @@ docker compose --profile ollama up     # also run Ollama in a container (heavy f
   not a committed file (`.env` is gitignored).
 - **Scaling:** the FastAPI service is stateless (sessions live in Postgres) → run multiple replicas
   behind a load balancer; point them at one managed Postgres (Supabase/RDS) + one Ollama host
-  (or an Ollama pool). Prisma `public` + FastAPI `techages` schemas keep migrations independent.
+  (or an Ollama pool). Prisma `public` + FastAPI `techaegis` schemas keep migrations independent.
 - **Same setup on the server:** `./scripts/setup.sh` works on Debian/Ubuntu (apt) too.
 
 ## Docs
