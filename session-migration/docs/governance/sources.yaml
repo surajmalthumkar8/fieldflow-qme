@@ -1,0 +1,85 @@
+# Canonical sources registry for the Architecture Governance Agent.
+#
+# The agent reads this BEFORE researching so it always hits the official doc + pricing
+# page (not a third-party blog) first. Add a provider here the moment the team considers
+# it. `docs` = reference/best-practice, `pricing` = current rates, `changelog` = release
+# notes, `status` = uptime/incidents. Keep URLs pointed at the official domain.
+#
+# Research rule: fetch the official page, stamp the figure with the retrieval date, then
+# cross-check pricing against ONE independent secondary source before quoting it.
+
+frameworks:
+  nextjs:
+    docs: https://nextjs.org/docs
+    changelog: https://github.com/vercel/next.js/releases
+    best_practices: https://nextjs.org/docs/app/building-your-application/deploying
+  fastapi:
+    docs: https://fastapi.tiangolo.com/
+    deployment: https://fastapi.tiangolo.com/deployment/
+    changelog: https://github.com/fastapi/fastapi/releases
+  docker:
+    docs: https://docs.docker.com/
+    best_practices: https://docs.docker.com/build/building/best-practices/
+  kubernetes:
+    docs: https://kubernetes.io/docs/home/
+    best_practices: https://kubernetes.io/docs/concepts/configuration/overview/
+
+ai_providers:
+  anthropic:
+    docs: https://docs.anthropic.com/
+    pricing: https://www.anthropic.com/pricing
+    models: https://docs.anthropic.com/en/docs/about-claude/models
+    changelog: https://docs.anthropic.com/en/release-notes
+  openai:
+    docs: https://platform.openai.com/docs
+    pricing: https://openai.com/api/pricing/
+    models: https://platform.openai.com/docs/models
+  gemini:
+    docs: https://ai.google.dev/gemini-api/docs
+    pricing: https://ai.google.dev/gemini-api/docs/pricing
+  groq:
+    docs: https://console.groq.com/docs
+    pricing: https://groq.com/pricing/
+  ollama:
+    docs: https://github.com/ollama/ollama/tree/main/docs
+    models: https://ollama.com/library
+
+cloud_platforms:
+  render:
+    docs: https://render.com/docs
+    pricing: https://render.com/pricing
+    # NOTE (verified 2026-06): Render has NO GPU instances. Their guidance is to host
+    # app/orchestration on Render and offload GPU inference to RunPod/Modal or an API.
+    gpu_note: https://render.com/articles/serverless-vs-unified-genai-backends
+  vercel:
+    docs: https://vercel.com/docs
+    pricing: https://vercel.com/pricing
+    limits: https://vercel.com/docs/limits
+  railway:
+    docs: https://docs.railway.com/
+    pricing: https://railway.com/pricing
+  flyio:
+    docs: https://fly.io/docs/
+    pricing: https://fly.io/docs/about/pricing/
+  supabase:
+    docs: https://supabase.com/docs
+    pricing: https://supabase.com/pricing
+  runpod:
+    docs: https://docs.runpod.io/
+    pricing: https://www.runpod.io/pricing
+  modal:
+    docs: https://modal.com/docs
+    pricing: https://modal.com/pricing
+  aws:
+    pricing: https://aws.amazon.com/pricing/
+    well_architected: https://aws.amazon.com/architecture/well-architected/
+  gcp:
+    pricing: https://cloud.google.com/pricing
+    architecture: https://cloud.google.com/architecture/framework
+  azure:
+    pricing: https://azure.microsoft.com/en-us/pricing/
+    architecture: https://learn.microsoft.com/en-us/azure/well-architected/
+
+security:
+  owasp_top10: https://owasp.org/www-project-top-ten/
+  owasp_llm: https://owasp.org/www-project-top-10-for-large-language-model-applications/

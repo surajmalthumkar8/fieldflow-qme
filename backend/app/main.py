@@ -1,0 +1,70 @@
+"""Techaegis AI — FastAPI AI/voice microservice.
+
+Endpoints:
+  GET  /health
+  POST /auth/register | /auth/login | GET /auth/me | POST /auth/logout
+  POST /chat                receptionist turn (RAG-grounded)
+  POST /qualify             lead scoring (grade + scores + budget + opportunity)
+  POST /summarize           conversation summary for sales
+  POST /kb/documents        ingest KB doc (auth)  | GET /kb/documents | POST /kb/search
+  GET  /voice/status | POST /voice    female TTS (Kokoro / macOS say)
+"""
+import asyncio
+from contextlib import asynccontextmanager
+
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+from .core.config import get_settings
+from .core.database import init_db, warm_pool
+from .routers import admin, agent, auth, billing, campaigns, chat, conversations, feedback, health, kb, leads, messaging, scheduling, sms, voice
+from .services import llm, notifications
+
+settings = get_settings()
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await init_db()
+    await warm_pool()  # warm DB connections so the first requests aren't cold
+    # Pre-load the conversation model so the first customer turn is snappy (no
+    # 40s cold-load). Runs in the background; startup isn't blocked.
+    if settings.prewarm:
+        asyncio.create_task(llm.prewarm(["receptionist"]))
+    # Background: email recipients about messages left unread too long.
+    notifier = asyncio.create_task(notifications.run_loop())
+    yield
+    notifier.cancel()
+
+
+app = FastAPI(title="Techaegis AI Receptionist API", version="0.1.0", lifespan=lifespan)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.cors_origin_list,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+    expose_headers=["X-TTS-Provider"],
+)
+
+app.include_router(health.router)
+app.include_router(auth.router)
+app.include_router(chat.router)
+app.include_router(conversations.router)
+app.include_router(agent.router)
+app.include_router(admin.router)
+app.include_router(feedback.router)
+app.include_router(messaging.router)
+app.include_router(billing.router)
+app.include_router(campaigns.router)
+app.include_router(leads.router)
+app.include_router(kb.router)
+app.include_router(scheduling.router)
+app.include_router(sms.router)
+app.include_router(voice.router)
+
+
+@app.get("/")
+async def root():
+    return {"service": "techaegis-ai-receptionist", "docs": "/docs", "health": "/health"}

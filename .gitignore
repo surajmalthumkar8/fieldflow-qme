@@ -1,15 +1,15 @@
-# dependencies
-/node_modules
-/.pnp
+# dependencies (any location)
+node_modules/
+.pnp
 .pnp.js
 
-# next.js
-/.next/
-/out/
+# next.js (any location)
+.next/
+out/
 next-env.d.ts
 
 # production
-/build
+build/
 
 # misc
 .DS_Store
@@ -27,13 +27,21 @@ yarn-error.log*
 # database (local demo)
 *.db
 *.db-journal
-/prisma/dev.db
-/prisma/dev.db-journal
+/frontend/prisma/dev.db
+/frontend/prisma/dev.db-journal
 
 # prisma generated client
-/lib/generated
+/frontend/lib/generated
 
 # typescript
 *.tsbuildinfo
 
 .vercel
+
+# python backend (also see backend/.gitignore)
+backend/.venv/
+__pycache__/
+
+# playwright / screenshots
+.playwright-mcp/
+/*.png

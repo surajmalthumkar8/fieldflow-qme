@@ -1,0 +1,194 @@
+"""Pydantic request/response models for the API."""
+from datetime import datetime
+
+from pydantic import BaseModel, EmailStr, Field
+
+
+# ---- Auth ----
+class RegisterIn(BaseModel):
+    email: EmailStr
+    password: str = Field(min_length=8)
+    full_name: str = ""
+    company_name: str = ""
+    timezone: str = "America/New_York"
+    business_id: str | None = None
+    role: str = "customer"  # public register is customer-only; privileged roles via invite
+
+
+class LoginIn(BaseModel):
+    email: EmailStr
+    password: str
+
+
+class InviteIn(BaseModel):
+    """Invite a teammate (admin or agent): no password — a set-password link is emailed.
+    business_id is required only for super_admin (admins are scoped to their own company)."""
+    email: EmailStr
+    full_name: str = ""
+    business_id: str = ""
+    company_name: str = ""
+    timezone: str = "America/New_York"
+    role: str = "admin"
+
+
+class FeedbackIn(BaseModel):
+    business_id: str = ""  # derived from the auth token server-side
+    conversation_id: str = ""
+    user_id: str = ""
+    appointment_id: str = ""
+    rating: int = 0  # 1-5
+    comment: str = ""
+    category: str = "other"
+    source: str = "post_booking"
+    target: str = "overall"  # ai | agent | overall
+    agent_id: str = ""        # set when target='agent'
+
+
+# ---- Campaigns / offers ----
+class CampaignIn(BaseModel):
+    title: str = ""
+    description: str = ""
+    offer: str = ""  # short headline, e.g. "15% off listing fee this month"
+    audience: str = "both"  # customers | agents | both
+    starts_at: datetime | None = None
+    ends_at: datetime | None = None
+
+
+class CampaignUpdate(BaseModel):
+    title: str | None = None
+    description: str | None = None
+    offer: str | None = None
+    audience: str | None = None
+    status: str | None = None  # draft | active | ended  (active = launch, ended = stop)
+    starts_at: datetime | None = None
+    ends_at: datetime | None = None
+
+
+class InterestIn(BaseModel):
+    note: str = ""
+
+
+class SmsTestIn(BaseModel):
+    to: str = ""    # E.164 destination, e.g. +15555550123
+    body: str = ""
+
+
+class ForgotIn(BaseModel):
+    email: EmailStr
+
+
+class ResetIn(BaseModel):
+    token: str
+    password: str = Field(min_length=8)
+
+
+class TokenOut(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    expires_at: str
+    user: "UserOut"
+
+
+class UserOut(BaseModel):
+    id: str
+    email: str
+    full_name: str
+    company_name: str = ""
+    timezone: str = "America/New_York"
+    profile: dict = {}
+    role: str
+    business_id: str | None = None
+
+
+# ---- Chat / receptionist ----
+class Turn(BaseModel):
+    role: str  # "user" | "assistant"
+    content: str
+
+
+class ChatIn(BaseModel):
+    business_id: str
+    business_name: str = "our team"
+    service_area: str = ""
+    history: list[Turn] = []
+    message: str = ""
+    use_kb: bool = True
+    conversation_id: str | None = None  # omit to start a new persisted conversation
+    # Signed-in customer (injected by the proxy from the auth cookie, not the browser).
+    user_id: str | None = None
+    customer_name: str = ""
+    customer_email: str = ""
+    customer_profile: str = ""  # short summary of the customer's saved preferences
+
+
+class ChatAction(BaseModel):
+    type: str = "none"
+    notes: str | None = None
+    # For a "schedule" action: the date (YYYY-MM-DD) the visitor asked to start from,
+    # parsed deterministically from their message ("next week" / "on the 23rd").
+    after: str | None = None
+
+
+class ChatOut(BaseModel):
+    reply: str
+    qualified: bool = False
+    sentiment: str = "neutral"
+    action: ChatAction = ChatAction()
+    captured: dict = {}
+    engine: str = "ollama"
+    conversation_id: str | None = None
+
+
+# ---- Lead qualification / summary ----
+class QualifyIn(BaseModel):
+    history: list[Turn]
+
+
+class QualifyOut(BaseModel):
+    leadGrade: str
+    leadScore: int
+    intentScore: int
+    budgetEstimate: float
+    opportunitySize: float
+    sentiment: str
+    rationale: str = ""
+    captured: dict = {}
+
+
+class SummarizeOut(BaseModel):
+    summary: str
+    nextStep: str = ""
+    keyFacts: list[str] = []
+
+
+# ---- Knowledge base ----
+class KbDocIn(BaseModel):
+    business_id: str
+    title: str = ""
+    source: str = "manual"
+    content: str
+
+
+class KbDocOut(BaseModel):
+    id: str
+    business_id: str
+    title: str
+    chunks: int
+
+
+class KbSearchIn(BaseModel):
+    business_id: str
+    query: str
+    top_k: int = 4
+
+
+class KbHit(BaseModel):
+    content: str
+    title: str
+    score: float
+
+
+# ---- Voice ----
+class VoiceIn(BaseModel):
+    text: str
+    voice: str | None = None
