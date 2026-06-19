@@ -5,6 +5,11 @@ import { getActiveBusinessId, listBusinesses } from "@/lib/session";
 import { getCurrentUser } from "@/lib/authServer";
 import type { Role } from "@/lib/nav";
 
+// The whole authenticated app is per-request (reads the session cookie + the tenant
+// list from the DB). Force it dynamic so `next build` never statically prerenders these
+// pages — which would run Prisma with no DATABASE_URL at build time.
+export const dynamic = "force-dynamic";
+
 export default async function AppLayout({
   children,
 }: {

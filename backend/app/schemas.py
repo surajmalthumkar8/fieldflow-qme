@@ -1,4 +1,6 @@
 """Pydantic request/response models for the API."""
+from datetime import datetime
+
 from pydantic import BaseModel, EmailStr, Field
 
 
@@ -40,6 +42,35 @@ class FeedbackIn(BaseModel):
     source: str = "post_booking"
     target: str = "overall"  # ai | agent | overall
     agent_id: str = ""        # set when target='agent'
+
+
+# ---- Campaigns / offers ----
+class CampaignIn(BaseModel):
+    title: str = ""
+    description: str = ""
+    offer: str = ""  # short headline, e.g. "15% off listing fee this month"
+    audience: str = "both"  # customers | agents | both
+    starts_at: datetime | None = None
+    ends_at: datetime | None = None
+
+
+class CampaignUpdate(BaseModel):
+    title: str | None = None
+    description: str | None = None
+    offer: str | None = None
+    audience: str | None = None
+    status: str | None = None  # draft | active | ended  (active = launch, ended = stop)
+    starts_at: datetime | None = None
+    ends_at: datetime | None = None
+
+
+class InterestIn(BaseModel):
+    note: str = ""
+
+
+class SmsTestIn(BaseModel):
+    to: str = ""    # E.164 destination, e.g. +15555550123
+    body: str = ""
 
 
 class ForgotIn(BaseModel):

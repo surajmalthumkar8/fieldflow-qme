@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from sqlalchemy import select
 
+from ..services import campaigns as campaigns_svc
 from ..services import llm, metering, rag, scheduling
 from ..core.database import get_db
 from ..core.deps import current_user
@@ -69,6 +70,14 @@ async def chat(body: ChatIn, user: AppUser = Depends(current_user), db: AsyncSes
         except Exception:
             context = ""  # KB optional — never block the reply
 
+    # Active offers the receptionist may advertise to customers (best-effort).
+    campaign_block = ""
+    try:
+        live = await campaigns_svc.live_campaigns(db, body.business_id, audience="customers")
+        campaign_block = campaigns_svc.format_for_prompt(live)
+    except Exception:
+        campaign_block = ""
+
     system = loader.receptionist_system_prompt(
         body.business_name,
         body.service_area,
@@ -76,6 +85,7 @@ async def chat(body: ChatIn, user: AppUser = Depends(current_user), db: AsyncSes
         customer_name=body.customer_name,
         customer_email=body.customer_email,
         customer_profile=body.customer_profile,
+        active_campaigns=campaign_block,
     )
     messages = [{"role": "system", "content": system}]
     # Compact context window: only keep the last N turns so the model stays fast

@@ -31,6 +31,7 @@ export const NAV: NavItem[] = [
   // ---- Company admin ----
   { href: "/admin/overview", label: "Overview", icon: "LayoutDashboard", group: "Overview", description: "Your company at a glance — leads, bookings, AI conversion.", roles: ["admin"] },
   { href: "/admin/customers", label: "Customers", icon: "Users", group: "Workspace", description: "Your leads — assign agents to follow up.", roles: ["admin"] },
+  { href: "/admin/campaigns", label: "Campaigns", icon: "Megaphone", group: "Workspace", description: "Run limited-time offers — the AI advertises them and interested customers route to your agents.", roles: ["admin"] },
   { href: "/admin/performance", label: "Performance & Revenue", icon: "TrendingUp", group: "Insights", description: "Your agents' bookings, conversion, SLAs and revenue.", roles: ["admin"] },
   { href: "/admin/feedback", label: "Feedback", icon: "Star", group: "Insights", description: "What customers say — with an AI summary of themes & priorities.", roles: ["admin"] },
   { href: "/admin/cost", label: "Cost Analyzer", icon: "Gauge", group: "Billing", description: "Your AI + RAG usage and what it costs.", roles: ["admin"] },

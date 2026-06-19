@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 interface Company {
@@ -14,7 +14,7 @@ const REGIONS = [
   { value: "IN", label: "India — IST", tz: "Asia/Kolkata" },
 ];
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
   const next = params.get("next") || "/receptionist";
@@ -230,5 +230,14 @@ export default function LoginPage() {
         </form>
       </div>
     </main>
+  );
+}
+
+// useSearchParams() requires a Suspense boundary when the page is prerendered.
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<main className="min-h-screen bg-[#0b1020]" />}>
+      <LoginForm />
+    </Suspense>
   );
 }

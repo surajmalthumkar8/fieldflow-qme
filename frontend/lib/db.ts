@@ -27,11 +27,31 @@ function resolveDatabaseUrl(): string | undefined {
 
 const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 
-export const prisma =
-  globalForPrisma.prisma ??
-  new PrismaClient({
-    datasources: { db: { url: resolveDatabaseUrl() } },
+function createClient(): PrismaClient {
+  const url = resolveDatabaseUrl();
+  return new PrismaClient({
+    // Only pass an explicit datasource when we actually have a URL. Passing
+    // `{ url: undefined }` makes the constructor throw — which broke `next build`
+    // (page-data collection) and any deploy that builds without DATABASE_URL.
+    ...(url ? { datasources: { db: { url } } } : {}),
     log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
   });
+}
 
-if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
+/** The shared Prisma client, constructed lazily on first use and cached. */
+export function getPrisma(): PrismaClient {
+  return (globalForPrisma.prisma ??= createClient());
+}
+
+// Back-compat: callers `import { prisma }`. A Proxy defers construction until the first
+// property access (a query at request time), so importing this module is side-effect
+// free — `next build` can collect page data without a database connection.
+export const prisma: PrismaClient = new Proxy({} as PrismaClient, {
+  get(_target, prop) {
+    const client = getPrisma();
+    const value = (client as unknown as Record<string | symbol, unknown>)[prop];
+    return typeof value === "function"
+      ? (value as (...args: unknown[]) => unknown).bind(client)
+      : value;
+  },
+});

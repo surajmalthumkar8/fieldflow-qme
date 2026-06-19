@@ -12,7 +12,7 @@ const ROUTES: Record<string, string[]> = {
   agent: ["/leads", "/scorecard", "/conversations", "/dashboard", "/reactivation", "/compliance", "/config", "/audit"],
   // Company admin: their overview, performance/revenue, customers/leads, agents,
   // feedback, cost + billing.
-  admin: ["/admin/overview", "/admin/performance", "/admin/customers", "/admin/agents", "/admin/feedback", "/admin/knowledge", "/admin/cost", "/admin/billing"],
+  admin: ["/admin/overview", "/admin/performance", "/admin/customers", "/admin/campaigns", "/admin/agents", "/admin/feedback", "/admin/knowledge", "/admin/cost", "/admin/billing"],
   // Platform: product analytics + companies + admins + feedback + revenue. NOT
   // /admin/performance — super_admin must never see a company's pipeline (privacy).
   super_admin: ["/admin/insights", "/admin/companies", "/admin/admins", "/admin/feedback", "/admin/revenue"],

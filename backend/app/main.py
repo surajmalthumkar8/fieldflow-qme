@@ -17,7 +17,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .core.config import get_settings
 from .core.database import init_db, warm_pool
-from .routers import admin, agent, auth, billing, chat, conversations, feedback, health, kb, leads, messaging, scheduling, voice
+from .routers import admin, agent, auth, billing, campaigns, chat, conversations, feedback, health, kb, leads, messaging, scheduling, sms, voice
 from .services import llm, notifications
 
 settings = get_settings()
@@ -57,9 +57,11 @@ app.include_router(admin.router)
 app.include_router(feedback.router)
 app.include_router(messaging.router)
 app.include_router(billing.router)
+app.include_router(campaigns.router)
 app.include_router(leads.router)
 app.include_router(kb.router)
 app.include_router(scheduling.router)
+app.include_router(sms.router)
 app.include_router(voice.router)
 
 

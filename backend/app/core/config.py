@@ -97,6 +97,15 @@ class Settings(BaseSettings):
     smtp_password: str = ""
     smtp_from: str = ""  # defaults to smtp_user
 
+    # --- Outbound SMS (Twilio). Leave blank to disable; campaigns/reactivation then
+    #     skip texting gracefully. Provide TWILIO_ACCOUNT_SID + TWILIO_AUTH_TOKEN and
+    #     either a TWILIO_MESSAGING_SERVICE_SID (preferred for A2P 10DLC) or a
+    #     TWILIO_FROM_NUMBER (E.164, e.g. +15555550111). ---
+    twilio_account_sid: str = ""
+    twilio_auth_token: str = ""
+    twilio_from_number: str = ""              # E.164 sender, e.g. +15555550111
+    twilio_messaging_service_sid: str = ""    # preferred: a Messaging Service (10DLC pool)
+
     # --- Public app URL (for links in outbound email, e.g. password-set links) ---
     app_url: str = "http://localhost:3000"
     reset_token_hours: int = 48  # how long an invite / password-reset link is valid
@@ -107,6 +116,15 @@ class Settings(BaseSettings):
     @property
     def email_enabled(self) -> bool:
         return bool(self.smtp_host and self.smtp_user and self.smtp_password)
+
+    @property
+    def sms_enabled(self) -> bool:
+        """SMS is sendable once we have creds AND a sender (number or messaging service)."""
+        return bool(
+            self.twilio_account_sid
+            and self.twilio_auth_token
+            and (self.twilio_from_number or self.twilio_messaging_service_sid)
+        )
 
     @property
     def async_database_url(self) -> str:

@@ -1,6 +1,7 @@
 import { PageHeader, EmptyState } from "@/components/ui/primitives";
 import { Building2 } from "lucide-react";
 import { CustomerAgentPanel } from "@/components/receptionist/CustomerAgentPanel";
+import { ActiveOffers } from "@/components/receptionist/ActiveOffers";
 import { getActiveBusiness } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
@@ -27,7 +28,8 @@ export default async function MyAgentPage() {
         title="My Agent"
         description="Talk to the human agent helping you, and rate your experience with the AI and your agent."
       />
-      <div className="mx-auto max-w-2xl">
+      <div className="mx-auto max-w-2xl space-y-5">
+        <ActiveOffers />
         <CustomerAgentPanel businessId={business.id} />
       </div>
     </div>

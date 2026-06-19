@@ -37,6 +37,7 @@ interface BizDef {
   slug: string;
   name: string;
   trade: string;
+  markets?: string; // CSV of regions served: "US" | "IN" | "US,IN". Defaults to "US".
   serviceArea: string;
   monthlyRetainer: number;
   pilotFee: number;
@@ -110,13 +111,72 @@ const BUSINESSES: BizDef[] = [
     a2pBrandEin: "82-5647382",
     consentNote: "Storm-lead + past-job list; ~60% have written consent, remainder pending re-consent.",
   },
+  // ---- Real-estate tenants (what customers register under: /api/businesses?region=) ----
+  {
+    slug: "lone-star-realty",
+    name: "Lone Star Realty",
+    trade: "real_estate",
+    markets: "US",
+    serviceArea: "Austin, TX metro (78701–78759)",
+    monthlyRetainer: 4000,
+    pilotFee: 2500,
+    kickerPerAppt: 250,
+    avgJobValue: 15000,
+    brandVoice: "warm, knowledgeable, no-pressure",
+    services: [
+      { name: "Buyer representation", priceLow: 8000, priceHigh: 25000, highTicket: true },
+      { name: "Listing / seller representation", priceLow: 10000, priceHigh: 40000, highTicket: true },
+      { name: "Rental placement", priceLow: 1500, priceHigh: 4000 },
+      { name: "Home valuation / consultation", priceLow: 0, priceHigh: 0 },
+    ],
+    faqs: [
+      { q: "Do you help with mortgage pre-approval?", a: "Yes — we connect you with trusted local lenders and can start pre-approval the same day." },
+      { q: "Which areas do you cover?", a: "The greater Austin metro — downtown, Round Rock, Cedar Park, and surrounding zips." },
+      { q: "What's your commission?", a: "Standard local rates, fully explained up front — no surprises at closing." },
+    ],
+    hours: { mon_fri: "9am–6pm", sat: "10am–4pm", sun: "By appointment", after_hours_policy: "Callback next morning for new inquiries" },
+    escalation: { highValueTriggers: ["cash buyer", "luxury", "investment", "relocation"], transferNumber: "+15125550144", alertChannel: "sms" },
+    fromNumber: "+18885550333",
+    a2pStatus: "REGISTERED",
+    a2pBrandEin: "47-7766554",
+    consentNote: "Past-client + open-house sign-in list; written consent captured at point of contact.",
+  },
+  {
+    slug: "mumbai-premier-properties",
+    name: "Mumbai Premier Properties",
+    trade: "real_estate",
+    markets: "IN",
+    serviceArea: "Mumbai metro (Bandra, Andheri, Powai, Thane)",
+    monthlyRetainer: 3000,
+    pilotFee: 2000,
+    kickerPerAppt: 200,
+    avgJobValue: 1200000,
+    brandVoice: "warm, professional, concise",
+    services: [
+      { name: "Buyer representation", priceLow: 500000, priceHigh: 3000000, highTicket: true },
+      { name: "Seller / listing services", priceLow: 600000, priceHigh: 4000000, highTicket: true },
+      { name: "Rental placement", priceLow: 50000, priceHigh: 200000 },
+      { name: "Property consultation", priceLow: 0, priceHigh: 0 },
+    ],
+    faqs: [
+      { q: "Do you assist with home loans?", a: "Yes — we work with leading banks and NBFCs and can help you get pre-sanctioned quickly." },
+      { q: "Which areas do you cover?", a: "Across the Mumbai metro — Bandra, Andheri, Powai, and Thane." },
+      { q: "Do you handle rentals as well as sales?", a: "Both — purchase, sale, and rental placement across residential and commercial." },
+    ],
+    hours: { mon_fri: "10am–7pm", sat: "10am–5pm", sun: "By appointment", after_hours_policy: "Callback next morning for new inquiries" },
+    escalation: { highValueTriggers: ["NRI", "luxury", "investment", "commercial"], transferNumber: "+912245550199", alertChannel: "sms" },
+    fromNumber: "+18885550444",
+    a2pStatus: "NOT_STARTED",
+    a2pBrandEin: "",
+    consentNote: "Walk-in + referral list; written consent captured at enquiry.",
+  },
 ];
 
 // Transcript builders per outcome.
 function voiceTranscript(biz: BizDef, svc: string): { role: string; content: string }[] {
   return [
     { role: "ASSISTANT", content: `Thanks for calling ${biz.name}! Quick note — I'm an AI assistant and this call may be recorded for quality. You can say 'stop' anytime to opt out. How can I help you today?` },
-    { role: "USER", content: `Hi, my ${biz.trade === "roofing" ? "roof is leaking after the storm" : "AC stopped cooling last night"}.` },
+    { role: "USER", content: `Hi, my ${biz.trade === "roofing" ? "roof is leaking after the storm" : biz.trade === "real_estate" ? "lease is ending soon and I'm hoping to buy a place" : "AC stopped cooling last night"}.` },
     { role: "ASSISTANT", content: `I'm sorry to hear that — let's get a technician out to you. Is this for your home, and what's the address?` },
     { role: "USER", content: `Yes, home. It's pretty urgent.` },
     { role: "ASSISTANT", content: `Understood. I've got tomorrow at 9am or Thursday at 2pm — which works better?` },
@@ -127,7 +187,7 @@ function voiceTranscript(biz: BizDef, svc: string): { role: string; content: str
 
 function smsTranscript(biz: BizDef, svc: string, booked: boolean): { role: string; content: string }[] {
   const base = [
-    { role: "ASSISTANT", content: `Hi, it's ${biz.name}. We're reaching out to past customers before the season — want us to ${biz.trade === "roofing" ? "do a free roof inspection" : "check your AC"} and get you on the schedule? Reply YES. Reply STOP to opt out.` },
+    { role: "ASSISTANT", content: `Hi, it's ${biz.name}. We're reaching out to past customers before the season — want us to ${biz.trade === "roofing" ? "do a free roof inspection" : biz.trade === "real_estate" ? "send you new listings that match what you're looking for" : "check your AC"} and get you on the schedule? Reply YES. Reply STOP to opt out.` },
   ];
   if (booked) {
     base.push(
@@ -157,8 +217,11 @@ async function main() {
         slug: def.slug,
         name: def.name,
         trade: def.trade,
+        markets: def.markets ?? "US",
         phone: def.escalation.transferNumber,
-        timezone: "America/Chicago",
+        timezone: def.trade === "real_estate" && (def.markets ?? "US").includes("IN") && !(def.markets ?? "US").includes("US")
+          ? "Asia/Kolkata"
+          : "America/Chicago",
         serviceArea: def.serviceArea,
         hours: JSON.stringify(def.hours),
         brandVoice: def.brandVoice,
